@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+	<meta charset="utf-8">
+	<title>Morne's Adventure</title>
+	<meta name="description" content="">
+	<meta name="author" content="Morne Liao">
+
+	<!-- HTML5 shim, for IE6-8 support of HTML elements -->
+	<!--[if lt IE 9]>
+		<script src="/theme/html5.js"></script>
+	<![endif]-->
+
+	<!-- Styles -->
+	<link href="/theme/bootstrap.min.css" rel="stylesheet">
+	<link href="/theme/local.css" rel="stylesheet">
+	<link href="/theme/pygments.css" rel="stylesheet">
+
+	<!-- Feeds -->
+
+
+
+
+</head>
+<body>
+	<div class="wrap">
+		<div class="navbar">
+			  <div class = "navbar-header">
+			  	<a class="navbar-brand" href="/">HOME</a>
+			  </div>
+			  <div class = "navbar-collapse">
+				<ul class="nav navbar-nav">
+					<a class="navbar-brand" href="/authors.html">About</a>
+				 </ul>
+			   </div>
+		</div>
+
+		<div class="main">
+			<div class="primary">
+				<div class="content">
+	<div class='article'>
+		<div class="page-header"><h1>简单Echo服务器的实现</h1></div>
+		<div class="article-meta">
+			<div class="author"> BY Morne Liao </div>
+		</div>
+		<div><blockquote>
+<p>Socket： A socket is one end of an interprocess communication channel. The two processes each establish their own socket.</p>
+<p>Socket Types：There are two widely used address domains, the unix domain, in which two processes which share a common file system communicate, and the Internet domain（when we use AF_INET as the domain, we are choosing this type）, in which two processes running on any two hosts on the Internet communicate. Each of these has its own address format.</p>
+</blockquote>
+<h2>套接字的地址结构：</h2>
+<div class="highlight"><pre>struct sockaddr_in {
+     uint8_t          sin_len;
+    sa_family_t     sin_family;
+    in_port_t     sin_port;
+    struct in_addr     sin_addr;
+    char               sin_zero[8];
+};
+</pre></div>
+
+
+<p><strong>字节序的转化？</strong></p>
+<p>以Internet域的套接字地址结构为例，其中包含sin_port和sin_addr(一般为unsigned int类型)；对于这两个字段，我们考虑下如果不进行转换可能发生的情况：
+对于小端字节序，如果端口为258，即0x0102，这个端口在内存中的表现应为，低字节为0x01，高字节为0x02，如果直接不进行转换传递为一个大端字节序的主机，大端主机会把端口翻译为0x0201，也就是513。为了避免这种情况的发生，我们在设置套接字的端口时先统一将端口转换为网络字节序（大端）；</p>
+<p>对于sin_addr，进行存储的是以一个unsigned int的整形，我们通常使用的是点分十进制表示法，这里我们在存储这个字段时也需要使用如inet_aton，inet_ntoa，inet_pton及inet_ntop来进行相应的转换。</p>
+<p><strong> UNP中的readn(), writen(), readline()包装函数</strong></p>
+<p>字节流套接字上的read和write函数表现的行为不同于通常的文件IO，在socketfd上的read，write可能出现不足值的情况；而且这些不足值并不代表错误。</p>
+<p>CSAPP中的RIO包在UNP提供的这三个包装函数的基础上，对readline函数做了一些改进：readline是带缓冲的，而readn是不带缓冲的，二者不能混用；readline使用了静态变量（不是线程安全的？？？）。</p>
+<p><strong>大多数套接字函数都需要一个指向套接字地址结构的指针和结构大小作为参数，这个结构大小是必要的吗？</strong></p>
+<p>如：int connect(int sockfd, const struct sockaddr *servaddr, socklen_t addrlen);</p>
+<p>这个参数的大小不可以用sizeof(*serveraddr)或sizeof(struct sockaddr)来表示吗？使用connect时，套接字地址结构由进程传递给内核，serveraddr指出了该结构的地址，但是对于不同的协议镞，他们使用的结构大小可能是不相同的，需要一个参数来指明这个结构的大小。</p>
+<p><strong> 在代码中，什么时候用fprintf(stderr, “…")，什么时候用perror(“…")？</strong></p>
+<p>man中讲到“The perror() function shall map the error numbers accessed through the symbol errno to a language-dependent error message, which shall be written to the standard error stream.” 所以如果是调用系统调用，并会产生errno时才用perror（），其他时候使用fprintf（）。</p>
+<h2>套接字函数：</h2>
+<p>//#include <sys/socket.h></p>
+<p>int socket(int family, int type, int protocol);</p>
+<p>int connect(int sockfd, const struct sockaddr *servaddr, socklen_t addrlen);</p>
+<p>int bind(int sockfd, const struct sockaddr *servaddr, socklen_t addrlen);</p>
+<p>int listen(int sockfd, int backlog);</p>
+<p>int accept(int socked, struct sockaddr *cliaddr; socklen_t &amp;addrlen);</p>
+<p>可以为这些函数编写相应的包装函数！</p>
+<h2>TCP Client/Server模型示例</h2>
+<p>EchoServer：服务器在某个选定的端口上监听客户端的请求事件，如果从客户端收到请求，每次读入一行（rio_readline），然后返回给客户端（writen）；</p>
+<p>EchoClient：客户端每次由标准输入中读取一行（fgets），将其传递给服务器（writen），然后等待服务器的回传信息（rio_readline），收到信息后输出到标准输出（fputs）。</p>
+<p>发生某些错误时会发生什么？（客户主机崩溃，客户进程崩溃，网络连接断开）</p>
+<p><strong>使用多线程来实现并发时，需要注意到可能产生僵死进程的问题</strong></p>
+<blockquote>
+<p>On Unix and Unix-like OS, a zombie process is a process has completed execution (via the exit system call) but still has an entry in the process table. The entry is needed to allow the parent process to read its child’s exit status, once the exit status is read via the wait system call, the zombie's entry is removed from the process table.</p>
+</blockquote>
+<p>解决方法，父进程要监听SIGCHLD信号，当收到该信号时，使用wait/waitpid来读取子进程的退出状态信息。</p>
+<p><strong>慢系统调用accept（）可能遇到的问题</strong></p>
+<p>如果进程阻塞在accept调用时，收到了SIGCHLD信号，此时信号会中断accept调用，进程需要对内核返回的EINTR错误进行处理。</p>
+<p><strong>需要注意的问题</strong></p>
+<p>accept的第三个参数是socklen_t *类型的：The integer referred to by addrlen initially contains the amount of space pointed to by add. On return it will contain the actual length in bytes of the address returned. </p>
+<p><strong>正确理解套接字</strong></p>
+<p>只有socket（）和accept（）两个套接字函数会产生新的套接字描述符。</p></div>
+	</div>
+				</div>
+			</div>
+
+			<div class="sidebar">
+				<div class="well">
+					<h3>Blogroll</h3>
+					<ul>
+						<li><a href="http://coolshell.cn/" target="_blank">酷壳</a></li>
+						<li><a href="http://mactalk.com/" target="_blank">池建强的随想录</a></li>
+						<li><a href="http://ruanyifeng.com/" target="_blank">阮一峰的网络日志</a></li>
+						<li><a href="http://mindhacks.cn/" target="_blank">Mind Hacks</a></li>
+						<li><a href="http://www.matrix67.com/blog/" target="_blank">Matrix67: The Aha Moments</a></li>
+						<li><a href="http://www.raychase.net/" target="_blank">四火的唠叨</a></li>
+						<li><a href="http://hedengcheng.com/" target="_blank">何登成的技术博客</a></li>
+						<li><a href="http://blog.csdn.net/solstice" target="_blank">陈硕的Blog</a></li>
+					</ul>
+
+					<h3>Social</h3>
+					<ul>
+						<li><a href="https://github.com/liaozhenyi" target="_blank">github</a></li>
+						<li><a href="https://www.quora.com/Zhenyi-Liao" target="_blank">quora</a></li>
+						<li><a href="http://stackoverflow.com/users/4362620/zhenyi-liao" target="_blank">stackoverflow</a></li>
+					</ul>
+
+					<h3> Categories </h3>
+					<ul>
+						<li ><a href="/category/category/others.html">others</a></li>
+						<li class="active"><a href="/category/category/tech.html">tech</a></li>
+					</ul>
+
+					<h3> Tags </h3>
+					<ul>
+						<li class="tag-4"><a href="/tag/network_programming">network_programming</a></li>
+						<li class="tag-4"><a href="/tag/socket">socket</a></li>
+						<li class="tag-4"><a href="/tag/littleSense">littleSense</a></li>
+					</ul>
+				</div>
+			</div>
+
+		</div>
+
+	</div>
+	
+	<div class="footbar">
+		<div class="container">
+		  <p>Powered by <a href="http://getpelican.com/">Pelican</a>, which takes great advantage of python. Morne's Adventure &copy; Morne Liao 2014</p>
+		</div>
+	</div>
+
+</body>
+</html>
