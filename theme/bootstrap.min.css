@@ -47,10 +47,12 @@ h6{font-size:13px;color:#bfbfbf;text-transform:uppercase;}
 .navbar{position:relative;min-height:50px;margin-bottom:20px;border:0px solid;background-color:#f8f8f8;color:#777}
 .navbar-header{float:left;}
 .navbar-brand{float:left; padding: 15px 15px; font-size:18px; line-height:20px}
-a.navbar-brand,a.navbar-collapse{text-decoration:none;color:#777;}
+.navbar-brand-fun{float:right; padding: 15px 15px; font-size:18px; line-height:20px}
+a.navbar-brand,a.navbar-collapse,a.navbar-brand-fun{text-decoration:none;color:#777;}
 .navbar-header a:hover, .navbar-nav a:hover{color:#333;}
 .navbar-collapse{width:auto;box-shadow:none;padding-right:15px;padding-left:15px;}
 .navbar-nav{float:left;margin:0px;}
+.navbar-fun{float:right;margin:0px;}
 .nav{padding-left:0;margin-bottom:0;}
 
 ul{display:block;list-style-type:disc;-webkit-margin-before:1em;-webkit-margin-after:1em;-webkit-margin-start:0px;-webkit-margin-end:0px;-webkit-padding-start:40px;}
