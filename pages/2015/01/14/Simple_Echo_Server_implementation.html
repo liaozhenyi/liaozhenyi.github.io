@@ -56,7 +56,7 @@
 <p>套接字地址是IP地址和端口号的组合。基于这种地址，网络套接字将收到的数据包传递给相应的进程。</p>
 <h2>套接字的地址结构：</h2>
 <div class="highlight"><pre>struct sockaddr_in {
-     uint8_t          sin_len;
+    uint8_t          sin_len;
     sa_family_t     sin_family;
     in_port_t     sin_port;
     struct in_addr     sin_addr;
@@ -67,8 +67,8 @@
 
 <p><strong>字节序的转化？</strong></p>
 <p>以Internet域的套接字地址结构为例，其中包含sin_port和sin_addr(一般为unsigned int类型)；对于这两个字段，我们考虑下如果不进行字节序转换可能发生的情况：
-对于小端字节序，如果端口为258，即0x0102，这个端口在内存中的表现应为，低字节为0x01，高字节为0x02，如果直接不进行转换传递为一个大端字节序的主机，大端主机会把端口翻译为0x0201，也就是513。为了避免这种情况的发生，我们在设置套接字的端口时先统一将端口转换为网络字节序（大端）；</p>
-<p>对于sin_addr，进行存储的是以一个unsigned int的整形，我们通常使用的是点分十进制表示法，这里我们在存储和处理这个字段时也需要使用如inet_aton，inet_ntoa，inet_pton及inet_ntop来进行相应的转换。</p>
+对于小端字节序，如果端口为258，即0x0102，这个端口号在内存中的表现应为，低字节为0x01，高字节为0x02，如果直接不进行转换传递为一个大端字节序的主机，大端主机会把端口翻译为0x0201，也就是513。为了避免这种情况的发生，我们在设置套接字的端口时先统一将端口转换为网络字节序（大端）；</p>
+<p>对于sin_addr，存储的是unsigned int类型，我们通常使用点分十进制表示法来表示ip，这里我们在存储和处理这个字段时也需要使用如inet_aton，inet_ntoa，inet_pton及inet_ntop来进行相应的类型转换。</p>
 <p><strong> UNP(Unix Network Programming)中的readn(), writen(), readline()包装函数</strong></p>
 <p>字节流套接字上的read和write函数表现的行为不同于通常的文件IO，在socketfd上的read，write可能出现不足值（short cut）的情况，而且这些不足值并不代表错误，可能是数据未准备好。</p>
 <p>UNP中提出了一种处理这些不足值的方法：为这些IO系统调用编写一些包装函数，由包装函数来处理这些不足值的情况，如read()的包装函数readn()：</p>
@@ -133,7 +133,7 @@
 </pre></div>
 
 
-<p>readline()每次从套接字中读取一个字符，判断它是不是换行符。这种做法有一个非常明显的缺点，每次read()系统调用只读取了一个字节，效率比较低。UNP中提到了一种解决办法，程序自己设置一个缓冲（在内存），每次先讲数据从套接字都到缓冲区，程序再从自身的缓冲区读取数据。</p>
+<p>readline()每次从套接字中读取一个字符，判断它是不是换行符。这种做法有一个非常明显的缺点，每次read()系统调用只读取了一个字节，效率比较低。UNP中提到了一种解决办法，程序自己设置一个缓冲（在内存），每次先将数据从套接字都到缓冲区，程序再从自身的缓冲区中读取数据。</p>
 <p>CSAPP(Computer Systems: A Programmer's Prospective)对于UNP提供的这几个IO包装函数，提出了一些问题：</p>
 <ul>
 <li>修改后的readline是带缓冲的，而readn是不带缓冲的，二者不能混用；</li>
@@ -242,8 +242,8 @@ int accept(int socked, struct sockaddr *cliaddr; socklen_t &amp;addrlen);
 					<h3> Tags </h3>
 					<ul>
 						<li class="tag-4"><a href="/tag/network_programming">network_programming</a></li>
-						<li class="tag-4"><a href="/tag/socket">socket</a></li>
 						<li class="tag-4"><a href="/tag/littleSense">littleSense</a></li>
+						<li class="tag-4"><a href="/tag/socket">socket</a></li>
 					</ul>
 				</div>
 			</div>
