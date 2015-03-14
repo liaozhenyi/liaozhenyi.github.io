@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+	<meta charset="utf-8">
+	<title>Morne's Adventure</title>
+	<meta name="description" content="">
+	<meta name="author" content="Morne Liao">
+
+	<!-- HTML5 shim, for IE6-8 support of HTML elements -->
+	<!--[if lt IE 9]>
+		<script src="/theme/html5.js"></script>
+	<![endif]-->
+
+	<!-- Styles -->
+	<link href="/theme/bootstrap.min.css" rel="stylesheet">
+	<link href="/theme/local.css" rel="stylesheet">
+	<link href="/theme/pygments.css" rel="stylesheet">
+
+	<!-- Feeds -->
+
+
+
+
+</head>
+<body>
+	<div class="wrap">
+		<div class="navbar">
+			  <div class = "navbar-header">
+			  	<a class="navbar-brand" href="/">HOME</a>
+			  </div>
+			  <div class = "navbar-collapse">
+				<ul class="nav navbar-nav">
+					<a class="navbar-brand" href="/about.html">About</a>
+				 </ul>
+				 <ul class="nav navbar-fun">
+					<a class="navbar-brand-fun" href="/fun.html">Fun</a>
+
+				 </ul>
+			   </div>
+		</div>
+
+		<div class="main">
+			<div class="primary">
+				<div class="content">
+	<div class='article'>
+		<div class="page-header"><h1>云风的cstring库</h1></div>
+		<div class="article-meta">
+			<div class="author"> BY Morne Liao </div>
+		</div>
+		<div><h3>为什么要给C语言写一个string库？</h3>
+<p>（来源于<a href="https://github.com/cloudwu/cstring">README of cstring</a>）</p>
+<p>C语言没有原生的string类型，这使得string的管理非常麻烦。这个库主要解决的几个问题：</p>
+<ul>
+<li>对于短字符串（小于 32 字节），进行 string interning 。这可以在文本处理时节约不少内存。短 string 相当于 symbol 类型，对它做比较操作的代价可以减少到 O(1) 。</li>
+<li>对于临时字符串，如果长度不大（小于 128 字节），尽可能的放在 stack 上，避免动态内存分配。</li>
+<li>支持常量字符串，对于常量短字符串只做一次 string interning 操作。</li>
+<li>使用引用计数管理相同的字符串，减少字符串的拷贝。</li>
+<li>短字符串，常量字符串，以及引用次数非常多（大于 64K 次）的字符串可以不动态释放，简化生命期管理。</li>
+<li>惰性计算，以及缓存字符串的 hash 值，以方便实现 hashmap 。</li>
+<li>这个库是线程安全的。</li>
+</ul>
+<h3>cstring中的数据结构</h3>
+<div class="highlight"><pre>struct cstring_data {
+    char * cstr;
+    uint32_t hash_size;
+    uint16_t type;
+    uint16_t ref;
+};
+</pre></div>
+
+
+<p>记录字符串的数据结构，字符串实际的存储位置和相应的字符串种类有关：</p>
+<div class="highlight"><pre>struct string_node {
+    struct cstring_data str;
+    char buffer[CSTRING_INTERNING_SIZE];
+    struct string_node * next;
+};
+
+struct string_pool {
+    struct string_node node[INTERNING_POOL_SIZE];
+};
+
+struct string_interning {
+    int lock;
+    int size; // 哈希表的大小
+    struct string_node ** hash;
+    struct string_pool * pool;
+    int index;
+    int total;
+};
+</pre></div>
+
+
+<p>在存储短字符串（小于32字节）时需要进行string interning操作，所有被intering的字符串记录在一个string pool中，每个intering string节点由一个string_node表示。在string_intering结构中，采用链地址法来解决hash冲突。</p>
+<h3>cstring的实现</h3>
+<p>首先看看它是如何存储常量字符串（小于128字节）的：</p>
+<div class="highlight"><pre>#define CSTRING_BUFFER(var) \
+    char var##_cstring [CSTRING_STACK_SIZE] = { &#39;\0&#39; }; \
+    struct cstring_data var##_cstring_data = { var##_cstring , 0, CSTRING_ONSTACK, 0 }; \
+    cstring_buffer var; \
+    var-&gt;str = &amp;var##_cstring_data;
+</pre></div>
+
+
+<p>从代码可以看出，用宏CSTRING_BUFFER来定义常量字符串时，字符串的空间直接在栈上分配。</p>
+<p>然后看看string intering是怎么实现的：</p>
+<div class="highlight"><pre>static cstring
+interning(struct string_interning * si, const char * cstr, size_t sz, uint32_t hash) {
+    if (si-&gt;hash == NULL) {
+        return NULL;
+    }
+    int index = (int)(hash &amp; (si-&gt;size-1));
+    struct string_node * n = si-&gt;hash[index];
+    //先在hash表中查找，如果找到，直接返回，相同的cstr返回的cstring地址相同
+    while(n) {
+        if (n-&gt;str.hash_size == hash) {
+            if (strcmp(n-&gt;str.cstr, cstr) == 0) {
+                return &amp;n-&gt;str;
+            }
+        }
+        n = n-&gt;next;
+    }
+    // 添加cstr到pool和hash表中
+    // 80% (4/5) threshold
+    if (si-&gt;total * 5 &gt;= si-&gt;size * 4) {
+        return NULL;
+    }
+    if (si-&gt;pool == NULL) {
+        // need not free pool
+        // todo: check memory alloc error
+        si-&gt;pool = malloc(sizeof(struct string_pool));
+        assert(si-&gt;pool);
+        si-&gt;index = 0;
+    }
+    n = &amp;si-&gt;pool-&gt;node[si-&gt;index++];
+    memcpy(n-&gt;buffer, cstr, sz);
+    n-&gt;buffer[sz] = &#39;\0&#39;;
+
+    cstring cs = &amp;n-&gt;str;
+    cs-&gt;cstr = n-&gt;buffer;
+    cs-&gt;hash_size = hash;
+    cs-&gt;type = CSTRING_INTERNING;
+    cs-&gt;ref = 0;
+
+    n-&gt;next = si-&gt;hash[index];
+    si-&gt;hash[index] = n;
+
+    return cs;
+}
+</pre></div>
+
+
+<p>对常量字符串的处理：</p>
+<div class="highlight"><pre>#define CSTRING_LITERAL(var, cstr)  \
+    static cstring var = NULL;  \
+    if (var) {} else {  \
+        cstring tmp = cstring_persist(&quot;&quot;cstr, (sizeof(cstr)/sizeof(char))-1);   \
+        if (!__sync_bool_compare_and_swap(&amp;var, NULL, tmp)) { \
+            cstring_free_persist(tmp);  \
+        }   \
+    }
+
+static cstring
+cstring_clone(const char * cstr, size_t sz) {
+    if (sz &lt; CSTRING_INTERNING_SIZE) {
+        return cstring_interning(cstr, sz, hash_blob(cstr,sz));
+    }
+    struct cstring_data * p = malloc(sizeof(struct cstring_data) + sz + 1);
+    // todo: memory alloc error
+    assert(p);
+    void * ptr = (void *)(p + 1);
+    p-&gt;cstr = ptr;
+    p-&gt;type = 0;
+    p-&gt;ref = 1;
+    memcpy(ptr, cstr, sz);
+    ((char *)ptr)[sz] = &#39;\0&#39;;
+    p-&gt;hash_size = 0;
+    return p;
+}
+
+cstring 
+cstring_persist(const char * cstr, size_t sz) {
+    cstring s = cstring_clone(cstr, sz);
+    if (s-&gt;type == 0) {
+        s-&gt;type = CSTRING_PERMANENT;
+        s-&gt;ref = 0;
+    }
+    return s;
+}
+</pre></div>
+
+
+<p>当使用宏CSTRING_LITERAL来定义一个常量字符串时，会调用cstring_persist函数，cstring_persist调用了cstring_clone来生成cstring对象，在创建cstring对象的时候需要做一个判断：如果cstr的大小小于32个字节，cstr会进行一次interning操作，否则当成临时字符串来处理。</p>
+<h3>思考</h3>
+<p><strong>README中关于literal操作提到在宏CSTRING_LITERAL(var, literal)中literal必须是以引号包含的字符串常量，而不能使用字符串的指针？</strong></p>
+<p>这是由于在处理这个宏的时候作者使用了sizeof()来计算literal字符串的大小，如果提供的参数是字符串的指针sizeof()返回的是指针所占的空间（4个字节）。为什么不用strlen()来代替sizeof()？sizeof()是运算符，在编译阶段可以得到结果，而strlen()是函数，需要运行阶段才能知道它的值。考虑到这个宏只用于处理常量字符串，这种要求比较合理。</p>
+<h3>参考资料</h3>
+<p><a href="https://github.com/cloudwu/cstring">cstring的实现</a></p>
+<p><a href="http://blog.codingnow.com/2013/09/cstring.html">一个简单的 C string 库</a></p></div>
+	</div>
+				</div>
+			</div>
+
+			<div class="sidebar">
+				<div class="well">
+					<h3>Blogroll</h3>
+					<ul>
+						<li><a href="http://coolshell.cn/" target="_blank">酷壳</a></li>
+						<li><a href="http://macshuo.com/" target="_blank">池建强的随想录</a></li>
+						<li><a href="http://ruanyifeng.com/" target="_blank">阮一峰的网络日志</a></li>
+						<li><a href="http://mindhacks.cn/" target="_blank">Mind Hacks</a></li>
+						<li><a href="http://www.matrix67.com/blog/" target="_blank">Matrix67: The Aha Moments</a></li>
+						<li><a href="http://www.raychase.net/" target="_blank">四火的唠叨</a></li>
+						<li><a href="http://hedengcheng.com/" target="_blank">何登成的技术博客</a></li>
+						<li><a href="http://blog.csdn.net/solstice" target="_blank">陈硕的Blog</a></li>
+					</ul>
+
+					<h3>Social</h3>
+					<ul>
+						<li><a href="https://github.com/liaozhenyi" target="_blank">github</a></li>
+						<li><a href="https://www.quora.com/Zhenyi-Liao" target="_blank">quora</a></li>
+						<li><a href="http://stackoverflow.com/users/4362620/zhenyi-liao" target="_blank">stackoverflow</a></li>
+					</ul>
+
+					<h3> Categories </h3>
+					<ul>
+						<li ><a href="/category/others.html">others</a></li>
+						<li class="active"><a href="/category/tech.html">tech</a></li>
+					</ul>
+
+					<h3> Tags </h3>
+					<ul>
+						<li class="tag-4"><a href="/tag/littleSense">littleSense</a></li>
+						<li class="tag-4"><a href="/tag/C source_code">C source_code</a></li>
+						<li class="tag-4"><a href="/tag/network_programming">network_programming</a></li>
+						<li class="tag-4"><a href="/tag/socket">socket</a></li>
+					</ul>
+				</div>
+			</div>
+
+		</div>
+
+	</div>
+	
+	<div class="footbar">
+		<div class="container">
+		  <p>Powered by <a href="http://getpelican.com/">Pelican</a>, which takes great advantage of python. Morne's Adventure &copy; Morne Liao 2014</p>
+		</div>
+	</div>
+
+</body>
+</html>
