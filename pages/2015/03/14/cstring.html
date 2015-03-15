@@ -69,7 +69,7 @@
 </pre></div>
 
 
-<p>记录字符串的数据结构，字符串实际的存储位置和相应的字符串种类有关：</p>
+<p>记录字符串的数据结构，cstr指向的内存位置和相应的字符串种类有关：</p>
 <div class="highlight"><pre>struct string_node {
     struct cstring_data str;
     char buffer[CSTRING_INTERNING_SIZE];
@@ -91,9 +91,14 @@ struct string_interning {
 </pre></div>
 
 
-<p>在存储短字符串（小于32字节）时需要进行string interning操作，所有被intering的字符串记录在一个string pool中，每个intering string节点由一个string_node表示。在string_intering结构中，采用链地址法来解决hash冲突。</p>
+<p>在存储短字符串（小于32字节）时需要进行string interning操作，每个intering string节点由一个string_node表示，所有被intering的字符串记录存放在一个string pool中，并在哈希表hash中记录它们的信息。在string_intering结构中，采用链地址法来解决hash冲突。</p>
 <h3>cstring的实现</h3>
-<p>首先看看它是如何存储常量字符串（小于128字节）的：</p>
+<ul>
+<li>临时字符串（小于128字节），直接在栈上申请分配空间，避免动态申请释放内存带来的开销；</li>
+<li>短字符串（小于32字节），使用string interning技术进行存储，相同的字符串只会存储一个实例，这样的好处在于对字符串进行比较操作时时间复杂度为O(1)（云风的博文中提到它们相当于一个symbol类型），缺点在于在进行string interning和hash表expand的时候会带来一些开销；</li>
+<li>常量字符串：如果它的长度小于32字节，把它当成短字符串来处理，否则当成permanent字符串来处理。</li>
+</ul>
+<p>首先看看它是如何存储临时字符串（小于128字节）的：</p>
 <div class="highlight"><pre>#define CSTRING_BUFFER(var) \
     char var##_cstring [CSTRING_STACK_SIZE] = { &#39;\0&#39; }; \
     struct cstring_data var##_cstring_data = { var##_cstring , 0, CSTRING_ONSTACK, 0 }; \
@@ -102,7 +107,7 @@ struct string_interning {
 </pre></div>
 
 
-<p>从代码可以看出，用宏CSTRING_BUFFER来定义常量字符串时，字符串的空间直接在栈上分配。</p>
+<p>从代码可以看出，用宏CSTRING_BUFFER来定义常量字符串时，字符串的所需内存直接在栈上分配。</p>
 <p>然后看看string intering是怎么实现的：</p>
 <div class="highlight"><pre>static cstring
 interning(struct string_interning * si, const char * cstr, size_t sz, uint32_t hash) {
@@ -190,10 +195,9 @@ cstring_persist(const char * cstr, size_t sz) {
 </pre></div>
 
 
-<p>当使用宏CSTRING_LITERAL来定义一个常量字符串时，会调用cstring_persist函数，cstring_persist调用了cstring_clone来生成cstring对象，在创建cstring对象的时候需要做一个判断：如果cstr的大小小于32个字节，cstr会进行一次interning操作，否则当成临时字符串来处理。</p>
 <h3>思考</h3>
-<p><strong>README中关于literal操作提到在宏CSTRING_LITERAL(var, literal)中literal必须是以引号包含的字符串常量，而不能使用字符串的指针？</strong></p>
-<p>这是由于在处理这个宏的时候作者使用了sizeof()来计算literal字符串的大小，如果提供的参数是字符串的指针sizeof()返回的是指针所占的空间（4个字节）。为什么不用strlen()来代替sizeof()？sizeof()是运算符，在编译阶段可以得到结果，而strlen()是函数，需要运行阶段才能知道它的值。考虑到这个宏只用于处理常量字符串，这种要求比较合理。</p>
+<p><strong>README中关于literal操作提到在宏CSTRING_LITERAL(var, literal)中literal必须是以引号包含的字符串常量，而不能使用指向字符串的指针？</strong></p>
+<p>这是由于在处理这个宏的时候作者使用了sizeof()来计算literal字符串的大小，而sizeof()是不能计算指针指向的内存的大小的。那为什么不用strlen()来代替sizeof()？sizeof()是运算符，在编译阶段可以得到结果，而strlen()是函数，需要运行阶段才能知道它的值。考虑到这个宏只用于处理常量字符串，这种要求比较合理。</p>
 <h3>参考资料</h3>
 <p><a href="https://github.com/cloudwu/cstring">cstring的实现</a></p>
 <p><a href="http://blog.codingnow.com/2013/09/cstring.html">一个简单的 C string 库</a></p></div>
@@ -230,10 +234,11 @@ cstring_persist(const char * cstr, size_t sz) {
 
 					<h3> Tags </h3>
 					<ul>
+						<li class="tag-4"><a href="/tag/source_code">source_code</a></li>
 						<li class="tag-4"><a href="/tag/littleSense">littleSense</a></li>
-						<li class="tag-4"><a href="/tag/C source_code">C source_code</a></li>
-						<li class="tag-4"><a href="/tag/network_programming">network_programming</a></li>
 						<li class="tag-4"><a href="/tag/socket">socket</a></li>
+						<li class="tag-4"><a href="/tag/C">C</a></li>
+						<li class="tag-4"><a href="/tag/network_programming">network_programming</a></li>
 					</ul>
 				</div>
 			</div>
