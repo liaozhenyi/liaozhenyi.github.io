@@ -10,7 +10,7 @@ li{margin: 0 0 5px;}
 strong {font-weight: bold;}
 
 blockquote{padding: 10px 20px; margin: 0 0 20px; border-left: 5px solid #eee;}
-.highlight{display: block; padding: 9.5px; margin: 0 0 10px; font-size: 13px; line-height: 1.5; word-break: break-all; word-wrap: break-word; font-family: Menlo,Monaco,Consolas,"courier New",monspace;}
+.highlight{display: block; margin: 0 0 10px; font-size: 13px; line-height: 1.5; word-break: break-all; word-wrap: break-word; font-family: Menlo,Monaco,Consolas,"courier New",monspace;}
 
 a{color:#1982d1;text-decoration:none;}
 a:focus,a:hover,a:active{text-decoration:underline;}

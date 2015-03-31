@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+	<meta charset="utf-8">
+	<title>Morne's Adventure</title>
+	<meta name="description" content="">
+	<meta name="author" content="Morne Liao">
+
+	<!-- HTML5 shim, for IE6-8 support of HTML elements -->
+	<!--[if lt IE 9]>
+		<script src="/theme/html5.js"></script>
+	<![endif]-->
+
+	<!-- Styles -->
+	<link href="/theme/bootstrap.min.css" rel="stylesheet">
+	<link href="/theme/local.css" rel="stylesheet">
+	<link href="/theme/pygments.css" rel="stylesheet">
+
+	<!-- Feeds -->
+
+
+
+
+</head>
+<body>
+	<div class="wrap">
+		<div class="navbar">
+			  <div class = "navbar-header">
+			  	<a class="navbar-brand" href="/">HOME</a>
+			  </div>
+			  <div class = "navbar-collapse">
+				<ul class="nav navbar-nav">
+					<a class="navbar-brand" href="/about.html">About</a>
+				 </ul>
+				 <ul class="nav navbar-fun">
+					<a class="navbar-brand-fun" href="/fun.html">Fun</a>
+
+				 </ul>
+			   </div>
+		</div>
+
+		<div class="main">
+			<div class="primary">
+				<div class="content">
+	<div class='article'>
+		<div class="page-header"><h1>Tiny Httpd</h1></div>
+		<div class="article-meta">
+			<div class="author"> BY Morne Liao </div>
+		</div>
+		<div><p>CSAPP中实现了一个Robust I/O package，它在文件读写IO函数（文件IO函数也称为不带缓冲的IO函数）上做出的改进：</p>
+<ul>
+<li>short cut（不足值）的自动处理；</li>
+<li>提供了带缓冲的IO包装函数。</li>
+</ul>
+<h3>short cut的处理</h3>
+<p>先看看两个文件读写IO函数：</p>
+<div class="highlight"><pre>ssize_t read(int filedes, void *buf, size_t nbytes);
+ssize_t write(int filedes, void *buf, size_t nbytes);
+</pre></div>
+
+
+<p>在进行读｜写文件操作时，实际读｜写的字节数（函数的返回值）和期望读的字节数可能不同，这两个值的差就是不足值。</p>
+<p>在读操作中很多情况会产生这种不足值：</p>
+<ul>
+<li>读到了文件尾；</li>
+<li>从终端、网络或管道读时，由于缓冲机制的影响或传输的数据量未达到要求；</li>
+<li>被信号中断。</li>
+</ul>
+<p>在写操作中，返回值通常遇期望写的字节数相同，当写操作被信号中断时也会出现不足值的情况。</p>
+<p>在实际的网络通信中，这种不足值并不代表错误，为了能够自动处理这些不足值的情况，实现read()和write()的包装函数rio_readn()，rio_writen()。rio_readn()包装函数的实现：</p>
+<div class="highlight"><pre>ssize_t rio_readn(int filedes, void *buf, size_t nbytes) {
+    ssize_t nread;
+    size_t left = nbytes;
+    char *bufp = buf;
+
+    while (left) {
+        nread = read(filedes, bufp, left);
+        if (-1 == nread) {
+            // 当read()被信号中断时，重启read()
+            if (errno == EINTR)
+                continue;
+            return -1;
+        } else if (0 == EINTR) {
+            break;
+        } else {
+            bufp += nread;
+            left -= nread;
+        }
+    }
+    return nbytes-left;
+}
+</pre></div>
+
+
+<p>具体实现这种处理的机制：</p>
+<ul>
+<li>返回的情况：read()系统调用出错｜read()读到EOF｜read()读到所需字节数</li>
+<li>当read()被信号中断时，自动重启read()。read是一个慢系统调用，慢指的是它是可能会永远阻塞，当它被信号中断时，有些系统不会在信号处理程序返回后重启这个系统调用，而是直接返回－1。</li>
+</ul>
+<h3>带缓冲的IO</h3>
+<p>考虑网络服务器的一个服务场景，当客户端telnet到服务器时，服务器需要逐行获取请求内容，这样可以通过每次通过read()读入一个字节，判断它是否是'\n'来实现。但这样实现存在一个很大的问题：每次系统调用只读了一个字节，效率很低，一种更好的实现方式是每次读取很多字节到一个应用级缓冲，在从缓冲中逐个读入字符，直到'\n'。</p>
+<p>基于这种考虑，需要实现了编写带缓冲的IO函数。</p>
+<p>一个缓冲区和一个文件描述符对应，这样的缓冲区的结构：</p>
+<div class="highlight"><pre>typedef struct {
+    char rio_buf[BUF_SIZE];
+    char *rio_bufptr;   // 指向下个未读的字符
+    int rio_fd;
+    int rio_cnt;        // 剩余未读的字节数
+} rio_buf_t;
+</pre></div>
+
+
+<p>带缓冲的读包装函数的实现：</p>
+<div class="highlight"><pre>ssize_t rio_buf_read(rio_buf_f *rp, void *buf, size_t nbytes) {
+    ssize_t nread;
+    size_t read_bytes;
+
+    while (0 == rp-&gt;rio_cnt) {
+        nread = read(rp-&gt;rio_fd, rp-&gt;rio_buf, BUF_SIZE);
+        if (-1 == nread) {
+            if (errno = EINTR)
+                continue;
+            return -1;
+        } else if (0 == nread) {
+            return 0; 
+        } else {
+            rp-&gt;rio_bufp = rp-&gt;rio_buf;
+            rp-&gt;rio_cnt = nread;
+        }
+    }
+
+    read_bytes = rp-&gt;rio_cnt &gt; nbytes : nbytes, rp-&gt;rio_cnt;
+    memcpy(buf, rp-&gt;rio_bufp, read_bytes);
+    rp-&gt;rio_cnt -= read_bytes;
+    rp-&gt;rio_bufp += read_bytes;
+
+    return read_bytes;
+}
+</pre></div>
+
+
+<p>当缓冲区为空时，rio_buf_read()会请求BUF_SIZE大小的数据，读取到数据之后再降缓冲区中的数据返回给调用者。rio_buf_read()没有去处理short cut的情况，这种设计是为了保持read()和rio_buf_read()语义的一致性，当需要用带缓冲的io函数代替不带缓冲的io函数时只需要将read()替换成rio_buf_read()即可。</p>
+<p>再rio_buf_read()的基础上实现带缓冲的rio_buf_readline()和rio_buf_readn()就很简单了。</p>
+<p>rio_readline()调用rio_buf_read()每次请求一个字节，判断它是不是换行符；rio_buf_readn()和rio_readn()的实现类似，只需要将其中的read()替换成rio_buf_read()。</p>
+<p><strong>在同一个fd上不能同时使用带缓冲的IO函数和不带缓冲的IO函数</strong></p>
+<p>由于带缓冲的IO函数每次可能请求多于实际返回的数据，也就是在缓冲区可能还会保存一部分未读数据，这个时候调用不带缓冲的IO函数可能会造成不可预知的结果</p>
+<h3>tiny－webserver</h3>
+<p>实现一个非常简单的httpd：</p>
+<ul>
+<li>当前只支持POST和GET两种方式；</li>
+<li>对于每个服务请求，创建一个线程来为其服务;</li>
+<li>支持静态文件请求和动态请求（cgi-bin下的可执行文件）。</li>
+</ul>
+<p>和常见的服务器客户端编程模式一样，服务器创建、绑定和监听套接字后，执行一个循环，从监听套接字上接收一个服务请求，创建一个线程来为其服务。</p>
+<p>客户端请求的第一行的格式为： METHOD URI HTTP_PROCOTOL</p>
+<blockquote>
+<p>URI: /([a-zA-Z-.<em>]*/)*(cgi-bin/)?([a-zA-Z-</em>.]+)?</p>
+</blockquote>
+<p>METHOD说明了请求的方式，URI中包含了请求的文件以及可能包含的参数。程序根据URI来区分动态请求和静态请求：如果URI中包含子串"cgi-bin"，则判定这是一个动态请求，否则它是一个静态请求。</p>
+<p>对于静态请求，读取文件返回给客户端。</p>
+<p>对于动态请求，创建一个子进程来执行cgi-bin中的可执行文件，若请求方法为POST，父进程需要将请求的content通过管道传送给子进程。子进程通过管道将执行的输出传递给父进程，父进程再将其返回给客户端。</p>
+<p>代码托管于<a href="https://github.com/liaozhenyi/network_programming/tree/master/tiny_webserver">Github</a></p></div>
+	</div>
+				</div>
+			</div>
+
+			<div class="sidebar">
+				<div class="well">
+					<h3>Blogroll</h3>
+					<ul>
+						<li><a href="http://coolshell.cn/" target="_blank">酷壳</a></li>
+						<li><a href="http://macshuo.com/" target="_blank">池建强的随想录</a></li>
+						<li><a href="http://ruanyifeng.com/" target="_blank">阮一峰的网络日志</a></li>
+						<li><a href="http://mindhacks.cn/" target="_blank">Mind Hacks</a></li>
+						<li><a href="http://www.matrix67.com/blog/" target="_blank">Matrix67: The Aha Moments</a></li>
+						<li><a href="http://www.raychase.net/" target="_blank">四火的唠叨</a></li>
+						<li><a href="http://hedengcheng.com/" target="_blank">何登成的技术博客</a></li>
+						<li><a href="http://blog.csdn.net/solstice" target="_blank">陈硕的Blog</a></li>
+					</ul>
+
+					<h3>Social</h3>
+					<ul>
+						<li><a href="https://github.com/liaozhenyi" target="_blank">github</a></li>
+						<li><a href="https://www.quora.com/Zhenyi-Liao" target="_blank">quora</a></li>
+						<li><a href="http://stackoverflow.com/users/4362620/zhenyi-liao" target="_blank">stackoverflow</a></li>
+					</ul>
+
+					<h3> Categories </h3>
+					<ul>
+						<li ><a href="/category/others.html">others</a></li>
+						<li class="active"><a href="/category/tech.html">tech</a></li>
+					</ul>
+
+					<h3> Tags </h3>
+					<ul>
+						<li class="tag-1"><a href="/tag/network_programming">network_programming</a></li>
+						<li class="tag-1"><a href="/tag/c">c</a></li>
+						<li class="tag-2"><a href="/tag/source_code">source_code</a></li>
+						<li class="tag-4"><a href="/tag/socket">socket</a></li>
+						<li class="tag-4"><a href="/tag/littleSense">littleSense</a></li>
+					</ul>
+				</div>
+			</div>
+
+		</div>
+
+	</div>
+	
+	<div class="footbar">
+		<div class="container">
+		  <p>Powered by <a href="http://getpelican.com/">Pelican</a>, which takes great advantage of python. Morne's Adventure &copy; Morne Liao 2014</p>
+		</div>
+	</div>
+
+</body>
+</html>
