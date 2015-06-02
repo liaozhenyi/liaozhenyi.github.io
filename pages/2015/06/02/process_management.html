@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+	<meta charset="utf-8">
+	<title>Morne's Adventure</title>
+	<meta name="description" content="">
+	<meta name="author" content="Morne Liao">
+
+	<!-- HTML5 shim, for IE6-8 support of HTML elements -->
+	<!--[if lt IE 9]>
+		<script src="/theme/html5.js"></script>
+	<![endif]-->
+
+	<!-- Styles -->
+	<link href="/theme/bootstrap.min.css" rel="stylesheet">
+	<link href="/theme/local.css" rel="stylesheet">
+	<link href="/theme/pygments.css" rel="stylesheet">
+
+	<!-- Feeds -->
+
+
+
+
+</head>
+<body>
+	<div class="wrap">
+		<div class="navbar">
+			  <div class = "navbar-header">
+			  	<a class="navbar-brand" href="/">HOME</a>
+			  </div>
+			  <div class = "navbar-collapse">
+				<ul class="nav navbar-nav">
+					<a class="navbar-brand" href="/about.html">About</a>
+				 </ul>
+				 <ul class="nav navbar-fun">
+					<a class="navbar-brand-fun" href="/fun.html">Fun</a>
+
+				 </ul>
+			   </div>
+		</div>
+
+		<div class="main">
+			<div class="primary">
+				<div class="content">
+	<div class='article'>
+		<div class="page-header"><h1>linux进程管理 初稿（Version 2.6.32）</h1></div>
+		<div class="article-meta">
+			<div class="author"> BY Morne Liao </div>
+		</div>
+		<div><h3>定义</h3>
+<p>关于process，一个经典的定义是：</p>
+<blockquote>
+<p>A process is a program in the midest of execution.</p>
+</blockquote>
+<p>进程是对IO设备、处理器和主存的抽象，操作系统给每个进程提供它们独占CPU和主存的视觉。</p>
+<h3>进程在内核中的表示</h3>
+<p>内核为每个进程维护一个进程描述符（struct task_struct）结构，它的定义在./include/linux/sched.h中。在这个结构中记录了描述进程状态的信息，如：打开文件表，进程地址空间，待决信号，进程的状态。。。</p>
+<div class="highlight"><pre>struct task_struct {
+    struct files_struct *files;
+    struct mm_struct *mm;
+    struct signal_struct *signal;
+    volatile long state;
+    ...
+};
+</pre></div>
+
+
+<h4>进程状态</h4>
+<p>state描述了当前进程的状态，进程可能处于五种情况之一：</p>
+<ul>
+<li>TASK_RUNNING</li>
+<li>TASK_INTERRUPTIBLE</li>
+<li>TASK_UNINTERRUPTIBLE</li>
+<li>__TASK_TRACED</li>
+<li>__TASK_STOPPED</li>
+</ul>
+<p>注意进程处于TASK_UNINTERRUPTIBLE状态时它不能被信号唤醒。</p>
+<h4>进程的创建</h4>
+<p>Linux使用clone()系统调用来实现fork()，它会调用do_fork()（./kernel/fork.c）,do_fork()又会调用copy_process()，这里包含了真正有趣的工作：</p>
+<div class="highlight"><pre><span class="cm">/*</span>
+<span class="cm"> * This creates a new process as a copy of the old one,</span>
+<span class="cm"> * it copies the registers, and all the appropriate</span>
+<span class="cm"> * parts of the process environment.</span>
+<span class="cm"> */</span><span class="w"></span>
+static<span class="w"> </span>struct<span class="w"> </span>task_struct<span class="w"> </span><span class="o">*</span>copy_process<span class="o">(</span>unsigned<span class="w"> </span>long<span class="w"> </span>clone_flags<span class="o">,</span><span class="w"></span>
+<span class="w">    </span>unsigned<span class="w"> </span>long<span class="w"> </span>stack_start<span class="o">,</span><span class="w"> </span>struct<span class="w"> </span>pt_regs<span class="w"> </span><span class="o">*</span>regs<span class="o">,</span><span class="w"> </span>
+<span class="w">    </span>unsigned<span class="w"> </span>long<span class="w"> </span>stack_size<span class="o">,</span><span class="w"> </span>int<span class="w"> </span>__user<span class="w"> </span><span class="o">*</span>child_tidptr<span class="o">,</span><span class="w"></span>
+<span class="w">    </span>struct<span class="w"> </span>pid<span class="w"> </span><span class="o">*</span>pid<span class="o">,</span><span class="w"> </span>int<span class="w"> </span><span class="kr">trace</span><span class="o">)</span><span class="w"> </span><span class="err">{</span><span class="w"></span>
+<span class="w">    </span>struct<span class="w"> </span>task_struct<span class="w"> </span><span class="o">*</span>p<span class="err">;</span><span class="w"></span>
+
+<span class="w">    </span>p<span class="w"> </span><span class="o">=</span><span class="w"> </span>dup_task_struct<span class="o">(</span>current<span class="o">)</span><span class="err">;</span><span class="w"> </span><span class="o">//</span><span class="w"> </span><span class="err">分配内核栈和进程描述符，内容与父进程一致</span><span class="w"></span>
+<span class="w">    </span><span class="o">//</span><span class="w"> </span><span class="err">子进程设置不同于父进程的一些字段</span><span class="w"></span>
+<span class="w">    </span>copt_sem<span class="o">(</span>clone_flags<span class="o">,</span><span class="w"> </span>p<span class="o">)</span><span class="err">;</span><span class="w"></span>
+<span class="w">    </span>copy_files<span class="o">(</span>clone_flags<span class="o">,</span><span class="w"> </span>p<span class="o">)</span><span class="err">;</span><span class="w"></span>
+<span class="w">    </span>copy_fs<span class="o">(</span>clone_flags<span class="o">,</span><span class="w"> </span>p<span class="o">)</span><span class="err">;</span><span class="w"></span>
+<span class="w">    </span>copy_mm<span class="o">(</span>clone_flags<span class="o">,</span><span class="w"> </span>p<span class="o">)</span><span class="err">;</span><span class="w"></span>
+<span class="w">    </span>copy_namespaces<span class="o">(</span>clone_flags<span class="o">,</span><span class="w"> </span>p<span class="o">)</span><span class="err">;</span><span class="w"></span>
+<span class="w">    </span>copy_thread<span class="o">(</span>clone_flags<span class="o">,</span><span class="w"> </span>stack_start<span class="o">,</span><span class="w"> </span>stack_size<span class="o">,</span><span class="w"> </span>p<span class="o">,</span><span class="w"> </span>regs<span class="o">)</span><span class="err">;</span><span class="w"></span>
+
+<span class="w">    </span>pid<span class="w"> </span><span class="o">=</span><span class="w"> </span>alloc_pid<span class="o">(</span>p<span class="o">-&gt;</span>nsproxy<span class="o">-&gt;</span>pid_ns<span class="o">)</span><span class="err">;</span><span class="w"></span>
+<span class="w">    </span><span class="o">...</span><span class="w"></span>
+<span class="err">}</span><span class="w"></span>
+</pre></div>
+
+
+<h4>Linux中的线程</h4>
+<p>linux并没有实现一个独立的线程概念，线程是通过进程来实现的，多个线程可以共享一些资源。</p>
+<h4>线程的终止</h4>
+<p>A sad story，到了要结束的时候。结束的处理工作由do_exit()（./kernel/exit.c）来执行：</p>
+<div class="highlight"><pre>void do_exit(long code)
+{
+    exit_signals(tsk);  //设置PF_EXITING标志
+    exit_mm(tsk);   //释放进程地址空间
+    exit_sem(tsk);
+    exit_files(tsk);
+    exit_fs(tsk);
+    exit_thread();
+    ...
+
+    exit_notify(tsk, group_dead);
+    schedule(); 
+}
+</pre></div></div>
+	</div>
+				</div>
+			</div>
+
+			<div class="sidebar">
+				<div class="well">
+					<h3>Blogroll</h3>
+					<ul>
+						<li><a href="http://coolshell.cn/" target="_blank">酷壳</a></li>
+						<li><a href="http://macshuo.com/" target="_blank">池建强的随想录</a></li>
+						<li><a href="http://ruanyifeng.com/" target="_blank">阮一峰的网络日志</a></li>
+						<li><a href="http://mindhacks.cn/" target="_blank">Mind Hacks</a></li>
+						<li><a href="http://www.matrix67.com/blog/" target="_blank">Matrix67: The Aha Moments</a></li>
+						<li><a href="http://www.raychase.net/" target="_blank">四火的唠叨</a></li>
+						<li><a href="http://hedengcheng.com/" target="_blank">何登成的技术博客</a></li>
+						<li><a href="http://blog.csdn.net/solstice" target="_blank">陈硕的Blog</a></li>
+					</ul>
+
+					<h3>Social</h3>
+					<ul>
+						<li><a href="https://github.com/liaozhenyi" target="_blank">github</a></li>
+						<li><a href="https://www.quora.com/Zhenyi-Liao" target="_blank">quora</a></li>
+						<li><a href="http://stackoverflow.com/users/4362620/zhenyi-liao" target="_blank">stackoverflow</a></li>
+					</ul>
+
+					<h3> Categories </h3>
+					<ul>
+						<li ><a href="/category/others.html">others</a></li>
+						<li class="active"><a href="/category/tech.html">tech</a></li>
+					</ul>
+
+					<h3> Tags </h3>
+					<ul>
+						<li class="tag-4"><a href="/tag/littleSense">littleSense</a></li>
+						<li class="tag-4"><a href="/tag/process">process</a></li>
+						<li class="tag-4"><a href="/tag/socket">socket</a></li>
+						<li class="tag-4"><a href="/tag/linux">linux</a></li>
+						<li class="tag-1"><a href="/tag/c">c</a></li>
+						<li class="tag-1"><a href="/tag/network_programming">network_programming</a></li>
+						<li class="tag-2"><a href="/tag/source_code">source_code</a></li>
+					</ul>
+				</div>
+			</div>
+
+		</div>
+
+	</div>
+	
+	<div class="footbar">
+		<div class="container">
+		  <p>Powered by <a href="http://getpelican.com/">Pelican</a>, which takes great advantage of python. Morne's Adventure &copy; Morne Liao 2014</p>
+		</div>
+	</div>
+
+</body>
+</html>
