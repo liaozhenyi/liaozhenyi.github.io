@@ -42,27 +42,61 @@
 		<div class="main">
 			<div class="primary">
 				<div class="content">
-<div class="page-header"><h1>Morne's Adventure <small>[archive]</small></h1></div><h2>2014</h2>
-<h3>December</h3>
-<ul>
-	<li><a href="pages/2014/12/31/last_day_of_2014.html">写在2014的最后一天</a></li>
-</ul>
-<h2>2015</h2>
-<h3>January</h3>
-<ul>
-	<li><a href="pages/2015/01/14/Simple_Echo_Server_implementation.html">简单Echo服务器的实现</a></li>
-</ul>
-<h3>March</h3>
-<ul>
-	<li><a href="pages/2015/03/31/TINY_HTTPD.html">Tiny Httpd</a></li>
-	<li><a href="pages/2015/03/24/tinyHttpd.html">J.David的tinyhttpd</a></li>
-	<li><a href="pages/2015/03/14/cstring.html">云风的cstring库</a></li>
-</ul>
-<h3>June</h3>
-<ul>
-	<li><a href="pages/2015/06/16/linked_lists.html">linux内核中的数据结构－－Linked Lists</a></li>
-	<li><a href="pages/2015/06/02/process_management.html">linux进程管理 初稿（Version 2.6.32）</a></li>
-</ul>
+	<div class='article'>
+		<div class="page-header"><h1>linux内核中的数据结构－－Linked Lists</h1></div>
+		<div class="article-meta">
+			<div class="author"> BY Morne Liao </div>
+		</div>
+		<div><p><strong>双向循环链表</strong></p>
+<p>和其他实现相比，Linux内核中对于双向循环链表的实现比较特殊，这个结构中没有去包含一个通用指针来支持不同的对象，而是将这个linked list结构本身嵌入到任意的结构中去。</p>
+<div class="highlight"><pre>struct list_head {
+    struct list_head *next, *prev;
+};
+
+struct mystruct {
+    // 其它属性
+    struct list_head list;
+};
+</pre></div>
+
+
+<p>所有的检索都是基于struct list_head *类型的指针，那么怎么能够获取相应对象中的其它属性呢？这里使用了一个trick，看看container_of这个宏：</p>
+<div class="highlight"><pre>#define container_of(ptr, type, member) ({              \
+    const typeof(((type *)0)-&gt;member) *__mptr = (ptr); \
+    (type *)((char *)__mptr - offsetof(type, member)); })
+
+#define offsetof(TYPE, MEMBER) ((size_t) &amp;((TYPE *)0)-&gt;MEMBER)
+</pre></div>
+
+
+<p>其实它就是取得了member相对type结构的偏移，然后用ptr减去这个偏移可以得到包含这个指针的对象的地址。</p>
+<p>添删查找操作和通常情况一样，可以在 ./include/linux/list.h查看它们的具体实现。</p>
+<p>一些有意思的宏：</p>
+<div class="highlight"><pre>#define list_for_each(pos, head) \
+    for (pos = (head)-&gt;next; prefetch(pos-&gt;next), pos != (head); \
+        pos = pos-&gt;next)
+#define list_for_each_safe(pos, n, head) \
+    for (pos = (head)-&gt;next, n = pos-&gt;next; pos != (head); \
+        pos = n, n = pos-&gt;next)
+</pre></div>
+
+
+<p>第二个宏中多了一个safe，它支持在遍历linked list的过程中对链表节点进行删除。第一个宏没有这种支持。</p>
+<p><strong>头节点只含一个指针的双向链表</strong></p>
+<div class="highlight"><pre>struct hlist_head {
+    struct hlist_node *first;
+};
+struct hlist_node {
+    struct hlist_node *next, **prev;
+};
+</pre></div>
+
+
+<p>看看这种链表对象，每个节点包含一个指向下一个对象的指针，以及_一个指向prev节点的next对象的指针_。这种设计使得头节点只需要包含一个指针，通常用于哈希表的实现（如进程pidmap的管理），每个表项相比循环双向linked list都节约了一个指针的空间。</p>
+<p>关于 (type) **prev的使用Linus大神曾说过这个是真正core low-level coding。 具体可见陈皓的博客<a href="http://coolshell.cn/articles/8990.html">Linus：利用二级指针删除单向链表</a>。</p>
+<h4>参考</h4>
+<p>linux kernel development 3rd edition</p></div>
+	</div>
 				</div>
 			</div>
 
@@ -90,7 +124,7 @@
 					<h3> Categories </h3>
 					<ul>
 						<li ><a href="/category/others.html">others</a></li>
-						<li ><a href="/category/tech.html">tech</a></li>
+						<li class="active"><a href="/category/tech.html">tech</a></li>
 					</ul>
 
 					<h3> Tags </h3>

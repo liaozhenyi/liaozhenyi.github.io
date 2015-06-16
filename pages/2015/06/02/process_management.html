@@ -52,7 +52,7 @@
 <blockquote>
 <p>A process is a program in the midest of execution.</p>
 </blockquote>
-<p>进程是对IO设备、处理器和主存的抽象，操作系统给每个进程提供它们独占CPU和主存的视觉。</p>
+<p>进程是对IO设备、处理器和主存的抽象，操作系统给每个进程提供它们独占CPU和主存的幻觉。</p>
 <h3>进程在内核中的表示</h3>
 <p>内核为每个进程维护一个进程描述符（struct task_struct）结构，它的定义在./include/linux/sched.h中。在这个结构中记录了描述进程状态的信息，如：打开文件表，进程地址空间，待决信号，进程的状态。。。</p>
 <div class="highlight"><pre>struct task_struct {
@@ -76,7 +76,7 @@
 </ul>
 <p>注意进程处于TASK_UNINTERRUPTIBLE状态时它不能被信号唤醒。</p>
 <h4>进程的创建</h4>
-<p>Linux使用clone()系统调用来实现fork()，它会调用do_fork()（./kernel/fork.c）,do_fork()又会调用copy_process()，这里包含了真正有趣的工作：</p>
+<p>Linux使用clone()系统调用来实现进程的创建，它会调用do_fork()（./kernel/fork.c）,do_fork()又会调用copy_process()，这里包含了真正有趣的工作：</p>
 <div class="highlight"><pre><span class="cm">/*</span>
 <span class="cm"> * This creates a new process as a copy of the old one,</span>
 <span class="cm"> * it copies the registers, and all the appropriate</span>
@@ -85,16 +85,25 @@
 static<span class="w"> </span>struct<span class="w"> </span>task_struct<span class="w"> </span><span class="o">*</span>copy_process<span class="o">(</span>unsigned<span class="w"> </span>long<span class="w"> </span>clone_flags<span class="o">,</span><span class="w"></span>
 <span class="w">    </span>unsigned<span class="w"> </span>long<span class="w"> </span>stack_start<span class="o">,</span><span class="w"> </span>struct<span class="w"> </span>pt_regs<span class="w"> </span><span class="o">*</span>regs<span class="o">,</span><span class="w"> </span>
 <span class="w">    </span>unsigned<span class="w"> </span>long<span class="w"> </span>stack_size<span class="o">,</span><span class="w"> </span>int<span class="w"> </span>__user<span class="w"> </span><span class="o">*</span>child_tidptr<span class="o">,</span><span class="w"></span>
-<span class="w">    </span>struct<span class="w"> </span>pid<span class="w"> </span><span class="o">*</span>pid<span class="o">,</span><span class="w"> </span>int<span class="w"> </span><span class="kr">trace</span><span class="o">)</span><span class="w"> </span><span class="err">{</span><span class="w"></span>
+<span class="w">    </span>struct<span class="w"> </span>pid<span class="w"> </span><span class="o">*</span>pid<span class="o">,</span><span class="w"> </span>int<span class="w"> </span><span class="o">\</span><span class="kr">trace</span><span class="o">)</span><span class="w"> </span><span class="err">{</span><span class="w"></span>
 <span class="w">    </span>struct<span class="w"> </span>task_struct<span class="w"> </span><span class="o">*</span>p<span class="err">;</span><span class="w"></span>
 
-<span class="w">    </span>p<span class="w"> </span><span class="o">=</span><span class="w"> </span>dup_task_struct<span class="o">(</span>current<span class="o">)</span><span class="err">;</span><span class="w"> </span><span class="o">//</span><span class="w"> </span><span class="err">分配内核栈和进程描述符，内容与父进程一致</span><span class="w"></span>
+<span class="w">    </span><span class="o">//</span><span class="w"> </span><span class="err">检查</span>flags<span class="err">是否合法</span><span class="w"></span>
+<span class="w">    </span>p<span class="w"> </span><span class="o">=</span><span class="w"> </span>dup_task_struct<span class="o">(</span>current<span class="o">)</span><span class="err">;</span><span class="w"> </span><span class="o">//</span><span class="w"> </span><span class="err">分配</span>thread<span class="w"> </span>info<span class="o">/</span>kernel<span class="w"> </span>stack<span class="err">和</span>process<span class="w"> </span>descriptor<span class="err">，内容与父进程一致</span><span class="w"></span>
+<span class="w">    </span><span class="o">//</span><span class="w"> </span><span class="err">检查进程资源的限制</span><span class="w"></span>
 <span class="w">    </span><span class="o">//</span><span class="w"> </span><span class="err">子进程设置不同于父进程的一些字段</span><span class="w"></span>
-<span class="w">    </span>copt_sem<span class="o">(</span>clone_flags<span class="o">,</span><span class="w"> </span>p<span class="o">)</span><span class="err">;</span><span class="w"></span>
+<span class="w">    </span>sched_fork<span class="o">(</span>p<span class="o">,</span><span class="w"> </span>clone_flags<span class="o">)</span><span class="err">;</span><span class="w"> </span><span class="o">//</span><span class="w"> </span><span class="err">设置调度相关的字段</span><span class="w"></span>
+
+<span class="w">    </span><span class="cm">/* 根据传递的flags标志确定哪些资源是共享，哪些资源需要复制 */</span><span class="w"></span>
+<span class="w">    </span>copt_semundo<span class="o">(</span>clone_flags<span class="o">,</span><span class="w"> </span>p<span class="o">)</span><span class="err">;</span><span class="w"></span>
 <span class="w">    </span>copy_files<span class="o">(</span>clone_flags<span class="o">,</span><span class="w"> </span>p<span class="o">)</span><span class="err">;</span><span class="w"></span>
 <span class="w">    </span>copy_fs<span class="o">(</span>clone_flags<span class="o">,</span><span class="w"> </span>p<span class="o">)</span><span class="err">;</span><span class="w"></span>
+<span class="w">    </span>copy_signal<span class="o">(</span>clong_flags<span class="o">,</span><span class="w"> </span>p<span class="o">)</span><span class="err">;</span><span class="w"></span>
 <span class="w">    </span>copy_mm<span class="o">(</span>clone_flags<span class="o">,</span><span class="w"> </span>p<span class="o">)</span><span class="err">;</span><span class="w"></span>
 <span class="w">    </span>copy_namespaces<span class="o">(</span>clone_flags<span class="o">,</span><span class="w"> </span>p<span class="o">)</span><span class="err">;</span><span class="w"></span>
+<span class="w">    </span>copy_io<span class="o">(</span>clone_flags<span class="o">,</span><span class="w"> </span>p<span class="o">)</span><span class="err">;</span><span class="w"></span>
+
+<span class="w">    </span><span class="cm">/* 初始化内核栈 */</span><span class="w"></span>
 <span class="w">    </span>copy_thread<span class="o">(</span>clone_flags<span class="o">,</span><span class="w"> </span>stack_start<span class="o">,</span><span class="w"> </span>stack_size<span class="o">,</span><span class="w"> </span>p<span class="o">,</span><span class="w"> </span>regs<span class="o">)</span><span class="err">;</span><span class="w"></span>
 
 <span class="w">    </span>pid<span class="w"> </span><span class="o">=</span><span class="w"> </span>alloc_pid<span class="o">(</span>p<span class="o">-&gt;</span>nsproxy<span class="o">-&gt;</span>pid_ns<span class="o">)</span><span class="err">;</span><span class="w"></span>
@@ -103,8 +112,10 @@ static<span class="w"> </span>struct<span class="w"> </span>task_struct<span cla
 </pre></div>
 
 
+<p>由于使用了COW（Copy on Write）技术，fork()带来的开销其实只有父进程页表的复制和新进程描述符的建立。    </p>
 <h4>Linux中的线程</h4>
 <p>linux并没有实现一个独立的线程概念，线程是通过进程来实现的，多个线程可以共享一些资源。</p>
+<p>在unix系统中</p>
 <h4>线程的终止</h4>
 <p>A sad story，到了要结束的时候。结束的处理工作由do_exit()（./kernel/exit.c）来执行：</p>
 <div class="highlight"><pre>void do_exit(long code)
@@ -120,7 +131,12 @@ static<span class="w"> </span>struct<span class="w"> </span>task_struct<span cla
     exit_notify(tsk, group_dead);
     schedule(); 
 }
-</pre></div></div>
+</pre></div>
+
+
+<h3>参考</h3>
+<p><a href="http://book.douban.com/subject/1776614/">《Understanding the Linux Kernel》</a></p>
+<p><a href="http://book.douban.com/subject/3291901/">《Linux Kernel Development》</a></p></div>
 	</div>
 				</div>
 			</div>
@@ -154,13 +170,13 @@ static<span class="w"> </span>struct<span class="w"> </span>task_struct<span cla
 
 					<h3> Tags </h3>
 					<ul>
-						<li class="tag-4"><a href="/tag/littleSense">littleSense</a></li>
 						<li class="tag-4"><a href="/tag/process">process</a></li>
-						<li class="tag-4"><a href="/tag/socket">socket</a></li>
-						<li class="tag-4"><a href="/tag/linux">linux</a></li>
-						<li class="tag-1"><a href="/tag/c">c</a></li>
-						<li class="tag-1"><a href="/tag/network_programming">network_programming</a></li>
 						<li class="tag-2"><a href="/tag/source_code">source_code</a></li>
+						<li class="tag-4"><a href="/tag/littleSense">littleSense</a></li>
+						<li class="tag-4"><a href="/tag/socket">socket</a></li>
+						<li class="tag-1"><a href="/tag/network_programming">network_programming</a></li>
+						<li class="tag-1"><a href="/tag/c">c</a></li>
+						<li class="tag-4"><a href="/tag/linux">linux</a></li>
 					</ul>
 				</div>
 			</div>
