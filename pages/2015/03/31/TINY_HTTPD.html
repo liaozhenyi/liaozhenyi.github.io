@@ -154,9 +154,6 @@ ssize_t write(int filedes, void *buf, size_t nbytes);
 </ul>
 <p>和常见的服务器客户端编程模式一样，服务器创建、绑定和监听套接字后，执行一个循环，从监听套接字上接收一个服务请求，创建一个线程来为其服务。</p>
 <p>客户端请求的第一行的格式为： METHOD URI HTTP_PROCOTOL</p>
-<blockquote>
-<p>URI: /([a-zA-Z-.<em>]*/)*(cgi-bin/)?([a-zA-Z-</em>.]+)?</p>
-</blockquote>
 <p>METHOD说明了请求的方式，URI中包含了请求的文件以及可能包含的参数。程序根据URI来区分动态请求和静态请求：如果URI中包含子串"cgi-bin"，则判定这是一个动态请求，否则它是一个静态请求。</p>
 <p>对于静态请求，读取文件返回给客户端。</p>
 <p>对于动态请求，创建一个子进程来执行cgi-bin中的可执行文件，若请求方法为POST，父进程需要将请求的content通过管道传送给子进程。子进程通过管道将执行的输出传递给父进程，父进程再将其返回给客户端。</p>
@@ -206,13 +203,13 @@ ssize_t write(int filedes, void *buf, size_t nbytes);
 
 					<h3> Tags </h3>
 					<ul>
-						<li class="tag-2"><a href="/tag/source_code">source_code</a></li>
-						<li class="tag-4"><a href="/tag/process">process</a></li>
-						<li class="tag-4"><a href="/tag/linux">linux</a></li>
-						<li class="tag-4"><a href="/tag/socket">socket</a></li>
-						<li class="tag-1"><a href="/tag/c">c</a></li>
 						<li class="tag-1"><a href="/tag/network_programming">network_programming</a></li>
+						<li class="tag-4"><a href="/tag/linux">linux</a></li>
+						<li class="tag-2"><a href="/tag/source_code">source_code</a></li>
+						<li class="tag-4"><a href="/tag/socket">socket</a></li>
 						<li class="tag-4"><a href="/tag/littleSense">littleSense</a></li>
+						<li class="tag-4"><a href="/tag/process">process</a></li>
+						<li class="tag-1"><a href="/tag/c">c</a></li>
 					</ul>
 				</div>
 			</div>

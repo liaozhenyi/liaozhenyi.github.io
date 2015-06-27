@@ -39,9 +39,28 @@
 <body>
 
 	<div class="main">
-		<p>
-		减熵
-		</p>
+		<p id="str"></p>
+		<script>
+			var xmlhttp = new XMLHttpRequest();
+			var url = "fun.txt";
+
+			xmlhttp.onreadystatechange = function() {
+				if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
+					var arr = xmlhttp.responseText;
+					var strs = arr.toString().split("\n");
+					randomStr(strs);
+				}
+			}
+
+			xmlhttp.open("GET", url, false);
+			xmlhttp.send();
+
+			function randomStr(strs) {
+				var size = strs.length-1;
+				var rand = Math.floor(Math.random()*size);
+				document.getElementById("str").innerHTML = strs[rand];
+			}
+		</script>
 	</div>
 
 </body>
