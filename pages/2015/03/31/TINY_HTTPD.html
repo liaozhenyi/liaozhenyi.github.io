@@ -22,6 +22,7 @@
 
 
 </head>
+
 <body>
 	<div class="wrap">
 		<div class="navbar">
@@ -160,6 +161,18 @@ ssize_t write(int filedes, void *buf, size_t nbytes);
 <p>对于静态请求，读取文件返回给客户端。</p>
 <p>对于动态请求，创建一个子进程来执行cgi-bin中的可执行文件，若请求方法为POST，父进程需要将请求的content通过管道传送给子进程。子进程通过管道将执行的输出传递给父进程，父进程再将其返回给客户端。</p>
 <p>代码托管于<a href="https://github.com/liaozhenyi/network_programming/tree/master/tiny_webserver">Github</a></p></div>
+		<div class="disqus">
+			<h2>Comments</h2>
+<div id="disqus_thread"></div>
+<script type="text/javascript">
+	var disqus_identifier = "pages/2015/03/31/TINY_HTTPD.html";
+	(function() {
+		var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+		dsq.src = 'https://morne.disqus.com/embed.js';
+		(document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+	})();
+</script>
+		</div>
 	</div>
 				</div>
 			</div>
@@ -193,13 +206,13 @@ ssize_t write(int filedes, void *buf, size_t nbytes);
 
 					<h3> Tags </h3>
 					<ul>
-						<li class="tag-4"><a href="/tag/process">process</a></li>
-						<li class="tag-2"><a href="/tag/source_code">source_code</a></li>
+						<li class="tag-1"><a href="/tag/c">c</a></li>
 						<li class="tag-4"><a href="/tag/littleSense">littleSense</a></li>
 						<li class="tag-4"><a href="/tag/socket">socket</a></li>
 						<li class="tag-1"><a href="/tag/network_programming">network_programming</a></li>
-						<li class="tag-1"><a href="/tag/c">c</a></li>
+						<li class="tag-4"><a href="/tag/process">process</a></li>
 						<li class="tag-4"><a href="/tag/linux">linux</a></li>
+						<li class="tag-2"><a href="/tag/source_code">source_code</a></li>
 					</ul>
 				</div>
 			</div>
@@ -210,7 +223,7 @@ ssize_t write(int filedes, void *buf, size_t nbytes);
 	
 	<div class="footbar">
 		<div class="container">
-		  <p>Powered by <a href="http://getpelican.com/">Pelican</a>, which takes great advantage of python. Morne's Adventure &copy; Morne Liao 2014</p>
+		  <p>Powered by <a href="http://getpelican.com/">Pelican</a>, which takes great advantage of python. Morne's Adventure &copy; Morne Liao 2014-2015</p>
 		</div>
 	</div>
 

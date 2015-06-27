@@ -61,3 +61,7 @@ ul{display:block;list-style-type:disc;-webkit-margin-before:1em;-webkit-margin-a
 
 .footbar{height:30px;background-color:#f5f5f5;width:97%;max-width:1050px;margin:0em auto;}
 .footbar p{line-height:30px;margin-bottom:0px;}
+
+.pagination{white-space:nowrap;width:100%;}
+.pagination ul{padding:0px;}
+.pagination li{display:inline;padding:4px;}
