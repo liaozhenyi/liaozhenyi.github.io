@@ -78,38 +78,38 @@
 <p>注意进程处于TASK_UNINTERRUPTIBLE状态时它不能被信号唤醒。</p>
 <h4>进程的创建</h4>
 <p>Linux使用clone()系统调用来实现进程的创建，它会调用do_fork()（./kernel/fork.c）,do_fork()又会调用copy_process()，这里包含了真正有趣的工作：</p>
-<div class="highlight"><pre><span class="cm">/*</span>
-<span class="cm"> * This creates a new process as a copy of the old one,</span>
-<span class="cm"> * it copies the registers, and all the appropriate</span>
-<span class="cm"> * parts of the process environment.</span>
-<span class="cm"> */</span><span class="w"></span>
-static<span class="w"> </span>struct<span class="w"> </span>task_struct<span class="w"> </span><span class="o">*</span>copy_process<span class="o">(</span>unsigned<span class="w"> </span>long<span class="w"> </span>clone_flags<span class="o">,</span><span class="w"></span>
-<span class="w">    </span>unsigned<span class="w"> </span>long<span class="w"> </span>stack_start<span class="o">,</span><span class="w"> </span>struct<span class="w"> </span>pt_regs<span class="w"> </span><span class="o">*</span>regs<span class="o">,</span><span class="w"> </span>
-<span class="w">    </span>unsigned<span class="w"> </span>long<span class="w"> </span>stack_size<span class="o">,</span><span class="w"> </span>int<span class="w"> </span>__user<span class="w"> </span><span class="o">*</span>child_tidptr<span class="o">,</span><span class="w"></span>
-<span class="w">    </span>struct<span class="w"> </span>pid<span class="w"> </span><span class="o">*</span>pid<span class="o">,</span><span class="w"> </span>int<span class="w"> </span><span class="kr">trace</span><span class="o">)</span><span class="w"> </span><span class="err">{</span><span class="w"></span>
-<span class="w">    </span>struct<span class="w"> </span>task_struct<span class="w"> </span><span class="o">*</span>p<span class="err">;</span><span class="w"></span>
+<div class="highlight"><pre>// This creates a new process as a copy of the old one,
+// it copies the registers, and all the appropriate
+// parts of the process environment.
 
-<span class="w">    </span><span class="o">//</span><span class="w"> </span><span class="err">检查</span>flags<span class="err">是否合法</span><span class="w"></span>
-<span class="w">    </span>p<span class="w"> </span><span class="o">=</span><span class="w"> </span>dup_task_struct<span class="o">(</span>current<span class="o">)</span><span class="err">;</span><span class="w"> </span><span class="o">//</span><span class="w"> </span><span class="err">分配</span>thread<span class="w"> </span>info<span class="o">/</span>kernel<span class="w"> </span>stack<span class="err">和</span>process<span class="w"> </span>descriptor<span class="err">，内容与父进程一致</span><span class="w"></span>
-<span class="w">    </span><span class="o">//</span><span class="w"> </span><span class="err">检查进程资源的限制</span><span class="w"></span>
-<span class="w">    </span><span class="o">//</span><span class="w"> </span><span class="err">子进程设置不同于父进程的一些字段</span><span class="w"></span>
-<span class="w">    </span>sched_fork<span class="o">(</span>p<span class="o">,</span><span class="w"> </span>clone_flags<span class="o">)</span><span class="err">;</span><span class="w"> </span><span class="o">//</span><span class="w"> </span><span class="err">设置调度相关的字段</span><span class="w"></span>
+static struct task_struct *copy_process(unsigned long clone_flags,
+    unsigned long stack_start, struct pt_regs *regs, 
+    unsigned long stack_size, int __user *child_tidptr,
+    struct pid *pid, int _trace)
+{
+    struct task_struct *p;
 
-<span class="w">    </span><span class="cm">/* 根据传递的flags标志确定哪些资源是共享，哪些资源需要复制 */</span><span class="w"></span>
-<span class="w">    </span>copt_semundo<span class="o">(</span>clone_flags<span class="o">,</span><span class="w"> </span>p<span class="o">)</span><span class="err">;</span><span class="w"></span>
-<span class="w">    </span>copy_files<span class="o">(</span>clone_flags<span class="o">,</span><span class="w"> </span>p<span class="o">)</span><span class="err">;</span><span class="w"></span>
-<span class="w">    </span>copy_fs<span class="o">(</span>clone_flags<span class="o">,</span><span class="w"> </span>p<span class="o">)</span><span class="err">;</span><span class="w"></span>
-<span class="w">    </span>copy_signal<span class="o">(</span>clong_flags<span class="o">,</span><span class="w"> </span>p<span class="o">)</span><span class="err">;</span><span class="w"></span>
-<span class="w">    </span>copy_mm<span class="o">(</span>clone_flags<span class="o">,</span><span class="w"> </span>p<span class="o">)</span><span class="err">;</span><span class="w"></span>
-<span class="w">    </span>copy_namespaces<span class="o">(</span>clone_flags<span class="o">,</span><span class="w"> </span>p<span class="o">)</span><span class="err">;</span><span class="w"></span>
-<span class="w">    </span>copy_io<span class="o">(</span>clone_flags<span class="o">,</span><span class="w"> </span>p<span class="o">)</span><span class="err">;</span><span class="w"></span>
+    // 检查flags是否合法
+    p = dup_task_struct(current); // 分配thread info/kernel stack和process descriptor，内容与父进程一致
+    // 检查进程资源的限制
+    // 子进程设置不同于父进程的一些字段
+    sched_fork(p, clone_flags); // 设置调度相关的字段
 
-<span class="w">    </span><span class="cm">/* 初始化内核栈 */</span><span class="w"></span>
-<span class="w">    </span>copy_thread<span class="o">(</span>clone_flags<span class="o">,</span><span class="w"> </span>stack_start<span class="o">,</span><span class="w"> </span>stack_size<span class="o">,</span><span class="w"> </span>p<span class="o">,</span><span class="w"> </span>regs<span class="o">)</span><span class="err">;</span><span class="w"></span>
+    // 根据传递的flags标志确定哪些资源是共享，哪些资源需要复制 
+    copt_semundo(clone_flags, p);
+    copy_files(clone_flags, p);
+    copy_fs(clone_flags, p);
+    copy_signal(clong_flags, p);
+    copy_mm(clone_flags, p);
+    copy_namespaces(clone_flags, p);
+    copy_io(clone_flags, p);
 
-<span class="w">    </span>pid<span class="w"> </span><span class="o">=</span><span class="w"> </span>alloc_pid<span class="o">(</span>p<span class="o">-&gt;</span>nsproxy<span class="o">-&gt;</span>pid_ns<span class="o">)</span><span class="err">;</span><span class="w"></span>
-<span class="w">    </span><span class="o">...</span><span class="w"></span>
-<span class="err">}</span><span class="w"></span>
+    // 初始化内核栈 
+    copy_thread(clone_flags, stack_start, stack_size, p, regs);
+
+    pid = alloc_pid(p-&gt;nsproxy-&gt;pid_ns);
+    ...
+}
 </pre></div>
 
 
@@ -183,13 +183,13 @@ static<span class="w"> </span>struct<span class="w"> </span>task_struct<span cla
 
 					<h3> Tags </h3>
 					<ul>
-						<li class="tag-1"><a href="/tag/network_programming">network_programming</a></li>
-						<li class="tag-4"><a href="/tag/linux">linux</a></li>
-						<li class="tag-2"><a href="/tag/source_code">source_code</a></li>
 						<li class="tag-4"><a href="/tag/socket">socket</a></li>
-						<li class="tag-4"><a href="/tag/littleSense">littleSense</a></li>
-						<li class="tag-4"><a href="/tag/process">process</a></li>
 						<li class="tag-1"><a href="/tag/c">c</a></li>
+						<li class="tag-2"><a href="/tag/source_code">source_code</a></li>
+						<li class="tag-1"><a href="/tag/network_programming">network_programming</a></li>
+						<li class="tag-4"><a href="/tag/process">process</a></li>
+						<li class="tag-4"><a href="/tag/linux">linux</a></li>
+						<li class="tag-4"><a href="/tag/littleSense">littleSense</a></li>
 					</ul>
 				</div>
 			</div>
