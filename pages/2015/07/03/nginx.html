@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+	<meta charset="utf-8">
+	<title>Morne's Adventure</title>
+	<meta name="description" content="">
+	<meta name="author" content="Morne Liao">
+
+	<!-- HTML5 shim, for IE6-8 support of HTML elements -->
+	<!--[if lt IE 9]>
+		<script src="/theme/html5.js"></script>
+	<![endif]-->
+
+	<!-- Styles -->
+	<link href="/theme/bootstrap.min.css" rel="stylesheet">
+	<link href="/theme/local.css" rel="stylesheet">
+	<link href="/theme/pygments.css" rel="stylesheet">
+
+	<!-- Feeds -->
+
+
+
+
+</head>
+
+<body>
+	<div class="wrap">
+		<div class="navbar">
+			  <div class = "navbar-header">
+			  	<a class="navbar-brand" href="/">HOME</a>
+			  </div>
+			  <div class = "navbar-collapse">
+				<ul class="nav navbar-nav">
+					<a class="navbar-brand" href="/about.html">About</a>
+				 </ul>
+				 <ul class="nav navbar-fun">
+					<a class="navbar-brand-fun" href="/fun.html">Fun</a>
+
+				 </ul>
+			   </div>
+		</div>
+
+		<div class="main">
+			<div class="primary">
+				<div class="content">
+	<div class='article'>
+		<div class="page-header"><h1>Nginx Day one</h1></div>
+		<div class="article-meta">
+			<div class="author"> BY Morne Liao </div>
+		</div>
+		<div><h2>安装</h2>
+<p>去<a href="http://nginx.org/en/download.html">nginx.org</a>上下载最新的nginx源码包</p>
+<div class="highlight"><pre>./configure
+make &amp;&amp; make install
+</pre></div>
+
+
+<p>安装好后测试一下，先修改配置文件，在配置文件中设置服务器根目录的路径为博客的根目录：</p>
+<div class="highlight"><pre>root ...
+</pre></div>
+
+
+<p>启动nginx，在浏览器中输入localhost:80：</p>
+<p><img alt="" src="/photo/nginx_blog.png" title="=x400" /></p>
+<h2>测试下性能</h2>
+<p>使用‘ab’工具来测试nginx的性能，关于这个工具可以读一下manual：</p>
+<blockquote>
+<p>ab is a tool for benchmarking your Apache Hypertext  Transfer  Protocol (HTTP) server. It is designed to give you an impression of how your current Apache installation performs. This especially shows you how many requests  per second your Apache installation is capable of serving.</p>
+</blockquote>
+<div class="highlight"><pre><span class="x">➜  blog git:(master) ✗ ab -kc 1000 -n 10000 http://127.0.0.1:80/</span>
+<span class="x">This is ApacheBench, Version 2.3 &lt;</span><span class="p">$</span><span class="nv">Revision</span><span class="x">: 1554214 </span><span class="p">$</span><span class="x">&gt;</span>
+<span class="x">Copyright 1996 Adam Twiss, Zeus Technology Ltd, http://www.zeustech.net/</span>
+<span class="x">Licensed to The Apache Software Foundation, http://www.apache.org/</span>
+
+<span class="x">Benchmarking 127.0.0.1 (be patient)</span>
+<span class="x">Completed 1000 requests</span>
+<span class="x">Completed 2000 requests</span>
+<span class="x">Completed 3000 requests</span>
+<span class="x">Completed 4000 requests</span>
+<span class="x">Completed 5000 requests</span>
+<span class="x">Completed 6000 requests</span>
+<span class="x">Completed 7000 requests</span>
+<span class="x">Completed 8000 requests</span>
+<span class="x">Completed 9000 requests</span>
+<span class="x">Completed 10000 requests</span>
+<span class="x">Finished 10000 requests</span>
+
+
+<span class="x">Server Software:        nginx/1.7.6</span>
+<span class="x">Server Hostname:        127.0.0.1</span>
+<span class="x">Server Port:            80</span>
+
+<span class="x">Document Path:          /</span>
+<span class="x">Document Length:        6552 bytes</span>
+
+<span class="x">Concurrency Level:      1000</span>
+<span class="x">Time taken for tests:   0.590 seconds</span>
+<span class="x">Complete requests:      10000</span>
+<span class="x">Failed requests:        0</span>
+<span class="x">Keep-Alive requests:    10000</span>
+<span class="x">Total transferred:      67910000 bytes</span>
+<span class="x">HTML transferred:       65520000 bytes</span>
+<span class="x">Requests per second:    16950.93 [</span><span class="err">#</span><span class="x">/sec] (mean)</span>
+<span class="x">Time per request:       58.994 [ms] (mean)</span>
+<span class="x">Time per request:       0.059 [ms] (mean, across all concurrent requests)</span>
+<span class="x">Transfer rate:          112415.81 [Kbytes/sec] received</span>
+
+<span class="x">Connection Times (ms)</span>
+<span class="x">          min  mean[+/-sd] median   max</span>
+<span class="x">Connect:        0    3   8.7      0      39</span>
+<span class="x">Processing:    19   52  10.1     55      61</span>
+<span class="x">Waiting:       19   52  10.2     55      61</span>
+<span class="x">Total:         34   55   3.8     55      61</span>
+
+<span class="x">Percentage of the requests served within a certain time (ms)</span>
+<span class="x">  50%     55</span>
+<span class="x">  66%     56</span>
+<span class="x">  75%     57</span>
+<span class="x">  80%     58</span>
+<span class="x">  90%     59</span>
+<span class="x">  95%     59</span>
+<span class="x">  98%     60</span>
+<span class="x">  99%     61</span>
+<span class="x"> 100%     61 (longest request)</span>
+</pre></div>
+
+
+<p>使用ab来请求了10000次博客的index.html，从输出信息中可以看出完成1000个并发请求一共花费了0.59秒。</p>
+<p>同样测试一下apache的性能：</p>
+<p>当并发数为1000时，直接崩掉</p>
+<div class="highlight"><pre><span class="x"> ➜  blog git:(master) ✗ ab -kc 1000 -n 10000 http://127.0.0.1/</span>
+<span class="x">This is ApacheBench, Version 2.3 &lt;</span><span class="p">$</span><span class="nv">Revision</span><span class="x">: 1554214 </span><span class="p">$</span><span class="x">&gt;</span>
+<span class="x">Copyright 1996 Adam Twiss, Zeus Technology Ltd, http://www.zeustech.net/</span>
+<span class="x">Licensed to The Apache Software Foundation, http://www.apache.org/</span>
+
+<span class="x">Benchmarking 127.0.0.1 (be patient)</span>
+<span class="x">apr_socket_recv: Connection reset by peer (54)</span>
+</pre></div>
+
+
+<p>并发数降到100时，</p>
+<div class="highlight"><pre><span class="x">➜  blog git:(master) ✗ ab -kc 100 -n 10000 http://127.0.0.1/</span>
+<span class="x">This is ApacheBench, Version 2.3 &lt;</span><span class="p">$</span><span class="nv">Revision</span><span class="x">: 1554214 </span><span class="p">$</span><span class="x">&gt;</span>
+<span class="x">Copyright 1996 Adam Twiss, Zeus Technology Ltd, http://www.zeustech.net/</span>
+<span class="x">Licensed to The Apache Software Foundation, http://www.apache.org/</span>
+
+<span class="x">Benchmarking 127.0.0.1 (be patient)</span>
+<span class="x">Completed 1000 requests</span>
+<span class="x">Completed 2000 requests</span>
+<span class="x">Completed 3000 requests</span>
+<span class="x">Completed 4000 requests</span>
+<span class="x">Completed 5000 requests</span>
+<span class="x">Completed 6000 requests</span>
+<span class="x">Completed 7000 requests</span>
+<span class="x">Completed 8000 requests</span>
+<span class="x">Completed 9000 requests</span>
+<span class="x">Completed 10000 requests</span>
+<span class="x">Finished 10000 requests</span>
+
+
+<span class="x">Server Software:        Apache/2.4.9</span>
+<span class="x">Server Hostname:        127.0.0.1</span>
+<span class="x">Server Port:            80</span>
+
+<span class="x">Document Path:          /</span>
+<span class="x">Document Length:        6552 bytes</span>
+
+<span class="x">Concurrency Level:      100</span>
+<span class="x">Time taken for tests:   5.577 seconds</span>
+<span class="x">Complete requests:      10000</span>
+<span class="x">Failed requests:        38</span>
+<span class="x">   (Connect: 0, Receive: 0, Length: 38, Exceptions: 0)</span>
+<span class="x">Keep-Alive requests:    9895</span>
+<span class="x">Total transferred:      68236808 bytes</span>
+<span class="x">HTML transferred:       65415168 bytes</span>
+<span class="x">Requests per second:    1793.00 [</span><span class="err">#</span><span class="x">/sec] (mean)</span>
+<span class="x">Time per request:       55.772 [ms] (mean)</span>
+<span class="x">Time per request:       0.558 [ms] (mean, across all concurrent requests)</span>
+<span class="x">Transfer rate:          11948.11 [Kbytes/sec] received</span>
+
+<span class="x">Connection Times (ms)</span>
+<span class="x">          min  mean[+/-sd] median   max</span>
+<span class="x">Connect:        0    0   0.3      0       4</span>
+<span class="x">Processing:     0   29 321.9      2    5052</span>
+<span class="x">Waiting:        0   21 253.0      2    5052</span>
+<span class="x">Total:          0   29 322.0      2    5052</span>
+
+<span class="x">Percentage of the requests served within a certain time (ms)</span>
+<span class="x">  50%      2</span>
+<span class="x">  66%      3</span>
+<span class="x">  75%      3</span>
+<span class="x">  80%      3</span>
+<span class="x">  90%      4</span>
+<span class="x">  95%      5</span>
+<span class="x">  98%     16</span>
+<span class="x">  99%    272</span>
+<span class="x"> 100%   5052 (longest request)</span>
+</pre></div>
+
+
+<p>比较一下性能nignx还是要远远好于apache的。</p></div>
+		<div class="disqus">
+			<h2>Comments</h2>
+<div id="disqus_thread"></div>
+<script type="text/javascript">
+	var disqus_identifier = "pages/2015/07/03/nginx.html";
+	(function() {
+		var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+		dsq.src = 'https://morne.disqus.com/embed.js';
+		(document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+	})();
+</script>
+		</div>
+	</div>
+				</div>
+			</div>
+
+			<div class="sidebar">
+				<div class="well">
+					<h3>Blogroll</h3>
+					<ul>
+						<li><a href="http://coolshell.cn/" target="_blank">酷壳</a></li>
+						<li><a href="http://macshuo.com/" target="_blank">池建强的随想录</a></li>
+						<li><a href="http://ruanyifeng.com/" target="_blank">阮一峰的网络日志</a></li>
+						<li><a href="http://mindhacks.cn/" target="_blank">Mind Hacks</a></li>
+						<li><a href="http://www.matrix67.com/blog/" target="_blank">Matrix67: The Aha Moments</a></li>
+						<li><a href="http://www.raychase.net/" target="_blank">四火的唠叨</a></li>
+						<li><a href="http://hedengcheng.com/" target="_blank">何登成的技术博客</a></li>
+						<li><a href="http://blog.csdn.net/solstice" target="_blank">陈硕的Blog</a></li>
+					</ul>
+
+					<h3>Social</h3>
+					<ul>
+						<li><a href="https://github.com/liaozhenyi" target="_blank">github</a></li>
+						<li><a href="https://www.quora.com/Zhenyi-Liao" target="_blank">quora</a></li>
+						<li><a href="http://stackoverflow.com/users/4362620/zhenyi-liao" target="_blank">stackoverflow</a></li>
+					</ul>
+
+					<h3> Categories </h3>
+					<ul>
+						<li class="active"><a href="/category/tech.html">tech</a></li>
+					</ul>
+
+					<h3> Tags </h3>
+					<ul>
+						<li class="tag-1"><a href="/tag/c">c</a></li>
+						<li class="tag-4"><a href="/tag/process">process</a></li>
+						<li class="tag-1"><a href="/tag/network_programming">network_programming</a></li>
+						<li class="tag-4"><a href="/tag/webserver">webserver</a></li>
+						<li class="tag-4"><a href="/tag/linux">linux</a></li>
+						<li class="tag-4"><a href="/tag/socket">socket</a></li>
+						<li class="tag-4"><a href="/tag/nginx">nginx</a></li>
+						<li class="tag-2"><a href="/tag/source_code">source_code</a></li>
+					</ul>
+				</div>
+			</div>
+
+		</div>
+
+	</div>
+	
+	<div class="footbar">
+		<div class="container">
+		  <p>Powered by <a href="http://getpelican.com/">Pelican</a>, which takes great advantage of python. Morne's Adventure &copy; Morne Liao 2014-2015</p>
+		</div>
+	</div>
+
+</body>
+</html>

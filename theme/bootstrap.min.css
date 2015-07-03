@@ -15,7 +15,7 @@ blockquote{padding: 10px 20px; margin: 0 0 20px; border-left: 5px solid #eee;}
 a{color:#1982d1;text-decoration:none;}
 a:focus,a:hover,a:active{text-decoration:underline;}
 a:visited{color:#11598f;}
-img{border:0;-ms-interpolation-mode:bicubic;}
+img{border:0;-ms-interpolation-mode:bicubic;width:97%;}
 
 body{background-color:#ffffff;margin:0;font-family:"Helvetica Neue",Helvetica,Arial,sans-serif;font-size:16px;font-weight:normal;line-height:18px;color:#333333;}
 
@@ -23,8 +23,8 @@ body{background-color:#ffffff;margin:0;font-family:"Helvetica Neue",Helvetica,Ar
 .main{clear:both;overflow:hidden;padding:10px 0 0;}
 .primary{float:left;margin:0 -300px 0 0;width:100%;}
 .container{width:97%;max-width:1050px;padding:0 10px;position:relative;margin:0px auto;width:1050px;}
-.content{max-width:710px;margin:0 250px 40px 10px;padding:0 20px 0 0;}
-.sidebar{float:left;max-width:280px;margin:60px 10px 0px 0px;padding-right:10px;}
+.content{width:97%;max-width:710px;margin:0 250px 40px 10px;padding:0 20px 0 0;}
+.sidebar{float:left;width:97%;max-width:280px;margin:60px 10px 0px 0px;padding-right:10px;}
 
 .article{margin: 0 0 3em;}
 .article-header{margin:0 0 1em;}
