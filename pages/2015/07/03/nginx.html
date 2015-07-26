@@ -21,6 +21,7 @@
 
 
 
+<script>var _gaq=[['_setAccount','UA-64784940-1'],['_trackPageview']];(function(d,t){var g=d.createElement(t),s=d.getElementsByTagName(t)[0];g.src='//www.google-analytics.com/ga.js';s.parentNode.insertBefore(g,s)}(document,'script'))</script>
 </head>
 
 <body>
@@ -125,9 +126,9 @@ make &amp;&amp; make install
 </pre></div>
 
 
-<p>使用ab来请求了10000次博客的index.html，从输出信息中可以看出完成1000个并发请求一共花费了0.59秒。</p>
+<p>请求博客的index.html10000次，同一时间concurrency设置为1000时，输出信息中显示完成10000个并发请求一共花费了0.59秒。</p>
 <p>同样测试一下apache的性能：</p>
-<p>当并发数为1000时，直接崩掉</p>
+<p>当concurrency为1000时，直接崩掉</p>
 <div class="highlight"><pre><span class="x"> ➜  blog git:(master) ✗ ab -kc 1000 -n 10000 http://127.0.0.1/</span>
 <span class="x">This is ApacheBench, Version 2.3 &lt;</span><span class="p">$</span><span class="nv">Revision</span><span class="x">: 1554214 </span><span class="p">$</span><span class="x">&gt;</span>
 <span class="x">Copyright 1996 Adam Twiss, Zeus Technology Ltd, http://www.zeustech.net/</span>
@@ -138,7 +139,7 @@ make &amp;&amp; make install
 </pre></div>
 
 
-<p>并发数降到100时，</p>
+<p>concurrency降到100时，</p>
 <div class="highlight"><pre><span class="x">➜  blog git:(master) ✗ ab -kc 100 -n 10000 http://127.0.0.1/</span>
 <span class="x">This is ApacheBench, Version 2.3 &lt;</span><span class="p">$</span><span class="nv">Revision</span><span class="x">: 1554214 </span><span class="p">$</span><span class="x">&gt;</span>
 <span class="x">Copyright 1996 Adam Twiss, Zeus Technology Ltd, http://www.zeustech.net/</span>
@@ -198,7 +199,7 @@ make &amp;&amp; make install
 </pre></div>
 
 
-<p>比较一下性能nignx还是要远远好于apache的。</p></div>
+<p>此时完成10000个请求共花费了5.577秒，将近是nginx服务器的10倍，相比较在并发量比较大时nginx的性能还是要远远好于apache的。</p></div>
 		<div class="disqus">
 			<h2>Comments</h2>
 <div id="disqus_thread"></div>
@@ -243,14 +244,14 @@ make &amp;&amp; make install
 
 					<h3> Tags </h3>
 					<ul>
-						<li class="tag-1"><a href="/tag/c">c</a></li>
-						<li class="tag-4"><a href="/tag/process">process</a></li>
-						<li class="tag-1"><a href="/tag/network_programming">network_programming</a></li>
-						<li class="tag-4"><a href="/tag/webserver">webserver</a></li>
-						<li class="tag-4"><a href="/tag/linux">linux</a></li>
-						<li class="tag-4"><a href="/tag/socket">socket</a></li>
-						<li class="tag-4"><a href="/tag/nginx">nginx</a></li>
 						<li class="tag-2"><a href="/tag/source_code">source_code</a></li>
+						<li class="tag-1"><a href="/tag/c">c</a></li>
+						<li class="tag-1"><a href="/tag/network_programming">network_programming</a></li>
+						<li class="tag-4"><a href="/tag/nginx">nginx</a></li>
+						<li class="tag-4"><a href="/tag/webserver">webserver</a></li>
+						<li class="tag-4"><a href="/tag/socket">socket</a></li>
+						<li class="tag-4"><a href="/tag/process">process</a></li>
+						<li class="tag-4"><a href="/tag/linux">linux</a></li>
 					</ul>
 				</div>
 			</div>
