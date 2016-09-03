@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+	<meta charset="utf-8">
+	<title>Booler's Adventure</title>
+	<meta name="description" content="">
+	<meta name="author" content="不贰">
+
+	<!-- HTML5 shim, for IE6-8 support of HTML elements -->
+	<!--[if lt IE 9]>
+		<script src="/theme/html5.js"></script>
+	<![endif]-->
+
+	<!-- Styles -->
+	<link href="/theme/bootstrap.min.css" rel="stylesheet">
+	<link href="/theme/local.css" rel="stylesheet">
+	<link href="/theme/pygments.css" rel="stylesheet">
+
+	<!-- Feeds -->
+
+
+
+
+<script>var _gaq=[['_setAccount','UA-64784940-1'],['_trackPageview']];(function(d,t){var g=d.createElement(t),s=d.getElementsByTagName(t)[0];g.src='//www.google-analytics.com/ga.js';s.parentNode.insertBefore(g,s)}(document,'script'))</script>
+</head>
+
+<body>
+	<div class="wrap">
+		<div class="navbar">
+			  <div class = "navbar-header">
+			  	<a class="navbar-brand" href="/">HOME</a>
+			  </div>
+			  <div class = "navbar-collapse">
+				<ul class="nav navbar-nav">
+					<a class="navbar-brand" href="/about.html">About</a>
+				 </ul>
+				 <ul class="nav navbar-fun">
+					<a class="navbar-brand-fun" href="/fun.html">Fun</a>
+
+				 </ul>
+			   </div>
+		</div>
+
+		<div class="main">
+			<div class="primary">
+				<div class="content">
+	<div class='article'>
+		<div class="page-header"><h1>链接</h1></div>
+		<div class="article-meta">
+			<div class="author"> BY 不贰 </div>
+		</div>
+		<div><h2>Object file</h2>
+<p>在Linux系统中主要有三种object file，它们使用Excutable and Linkable Format (ELF)：</p>
+<ul>
+<li>relocatable object file 可重定位的目标文件</li>
+<li>executable object file 可运行的目标文件</li>
+<li>shared object file 共享目标文件</li>
+</ul>
+<h2>链接</h2>
+<p>链接其实就是由relocatablle object file和shared object file生成executable object file的过程，executable object file可以加载到内存中执行。</p>
+<p>考虑一下这个过程，在relocatable object file中的变量类型：</p>
+<ol>
+<li>在本文件中定义的全局变量（函数）</li>
+<li>在本文件中定义的静态变量（函数）</li>
+<li>在本文件中定义的非静态局部变量</li>
+<li>在其他文件中定义的全局变量（函数）</li>
+</ol>
+<p>其中前面三种变量都可以在当前文件中找到定义，而如何解析最后一种变量就是链接过程需要做的工作。</p>
+<h2>ELF sections</h2>
+<p>ELF包含了几个关键的sections，理解这些sections的作用会对理解链接过程起到很大的作用。</p>
+<table>
+<thead>
+<tr>
+<th>Section</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>.text</td>
+<td>程序代码段</td>
+</tr>
+<tr>
+<td>.data</td>
+<td>初始化的全局变量</td>
+</tr>
+<tr>
+<td>.bss</td>
+<td>未初始化的全局变量</td>
+</tr>
+<tr>
+<td>.symtab</td>
+<td>符号表</td>
+</tr>
+<tr>
+<td>.debug</td>
+<td>变量调试符号表</td>
+</tr>
+<tr>
+<td>.rodata</td>
+<td>只读数据，如printf中的format strings，switch的jump tables</td>
+</tr>
+<tr>
+<td>...</td>
+<td>...</td>
+</tr>
+</tbody>
+</table>
+<p>看一个具体的例子，修改于CSAPP中提供的例子：</p>
+<div class="highlight"><pre>// main.c
+void swap(void);
+
+int buf[2] = {1, 2};
+
+int main(void)
+{
+    static si = 0;
+    ++si;
+    char *str = &quot;swap():&quot;;
+
+    swap();
+    printf(&quot;%s success\n&quot;, str);
+    return 0;
+}
+
+// swap.c
+extern int buf[];
+
+int *bufp0 = &amp;buf[0];
+int *bufp1;
+
+void swap()
+{
+    static int si;
+    int temp;
+
+    bufp1 = &amp;buf[1];
+    temp = *bufp0;
+    *bufp0 = *bufp1;
+    *bufp1 = temp;
+}
+</pre></div>
+
+
+<p>接下来完成预处理、编译、汇编和链接四个阶段，可以得到一个可执行文件，具体的过程可以参见<code>man gcc</code>，如-E选项会使得gcc在preprocessing stage后停止。</p>
+<p>在汇编阶段之后会获得main.o和swap.o，这两个object file是relocatable的，使用readelf来查看它们的符号表：</p>
+<p>Machine： X86-64 ubuntu
+GNU readelf： 2.24.90.20141014</p>
+<div class="highlight"><pre># readelf -a main.o
+Symbol table &#39;.symtab&#39; contains 15 entries:
+       Num:    Value          Size Type    Bind   Vis      Ndx Name
+         0: 0000000000000000     0 NOTYPE  LOCAL  DEFAULT  UND
+         1: 0000000000000000     0 FILE    LOCAL  DEFAULT  ABS main.c
+         2: 0000000000000000     0 SECTION LOCAL  DEFAULT    1
+         3: 0000000000000000     0 SECTION LOCAL  DEFAULT    3
+         4: 0000000000000000     0 SECTION LOCAL  DEFAULT    4
+         5: 0000000000000000     0 SECTION LOCAL  DEFAULT    5
+         6: 0000000000000000     4 OBJECT  LOCAL  DEFAULT    4 si.2203
+         7: 0000000000000000     0 SECTION LOCAL  DEFAULT    6
+         8: 0000000000000000     0 SECTION LOCAL  DEFAULT    7
+         9: 0000000000000000     0 SECTION LOCAL  DEFAULT    5
+        10: 0000000000000000     8 OBJECT  GLOBAL DEFAULT    3 buf
+        11: 0000000000000000    16 FUNC    GLOBAL DEFAULT    1 main
+        12: 0000000000000000     0 NOTYPE  GLOBAL DEFAULT  UND swap
+        13: 0000000000000000     0 NOTYPE  GLOBAL DEFAULT  UND printf
+        14: 0000000000000000     0 NOTYPE  GLOBAL DEFAULT  UND __stack_chk_fail
+# nm main.o
+0000000000000000 D buf
+0000000000000000 T main
+0000000000000000 b si.2203
+                  U __stack_chk_fail
+                  U swap
+# objdump -s main.o
+...
+Contents of section .rodata:
+0000 25732073 75636365 73730a00           %s success..
+...
+</pre></div>
+
+
+<p>main.o的符号表中包含了buf，main和swap等五个符号，buf处在初始化的数据段中（.data），main处在代码段中（.text），swap符号没有定义（undefined），本地静态变量si处于未初始化的数据段中（.bss），注意在符号表中它加上了一个后缀，这样如果在其他的object file中定义了相同名字的本地静态变量si，它们之间不会产生冲突。printf中的format string存在了rodata段中。</p>
+<div class="highlight"><pre># readelf -a swap.o
+Symbol table &#39;.symtab&#39; contains 13 entries:
+        Num:    Value          Size Type    Bind   Vis      Ndx Name
+        0: 0000000000000000     0 NOTYPE  LOCAL  DEFAULT  UND
+        1: 0000000000000000     0 FILE    LOCAL  DEFAULT  ABS swap.c
+        2: 0000000000000000     0 SECTION LOCAL  DEFAULT    1
+        3: 0000000000000000     0 SECTION LOCAL  DEFAULT    3
+        4: 0000000000000000     0 SECTION LOCAL  DEFAULT    5
+        5: 0000000000000000     4 OBJECT  LOCAL  DEFAULT    5 si.2202
+        6: 0000000000000000     0 SECTION LOCAL  DEFAULT    7
+        7: 0000000000000000     0 SECTION LOCAL  DEFAULT    8
+        8: 0000000000000000     0 SECTION LOCAL  DEFAULT    6
+        9: 0000000000000000     8 OBJECT  GLOBAL DEFAULT    3 bufp0
+        10: 0000000000000000     0 NOTYPE  GLOBAL DEFAULT  UND buf
+        11: 0000000000000008     8 OBJECT  GLOBAL DEFAULT  COM bufp1
+        12: 0000000000000000    59 FUNC    GLOBAL DEFAULT    1 swap
+# nm swap.o
+                 U buf
+0000000000000000 D bufp0
+0000000000000008 C bufp1
+0000000000000000 b si.2202
+0000000000000000 T swap
+</pre></div>
+
+
+<p>swap.o的符号表中包含了四个符号。bufp1是common symbol，它存在.bss中，注意bufp0和bufp1的区别，前者是已初始化的全局变量，它是一个strong符号，而bufp1是一个weak符号。</p>
+<p>strong符号（初始化的全局变量和函数）和weak符号（未初始化的全局变量）是由编译器确定的，在全局符号的解析过程中，当遇到同名的符号时：</p>
+<ol>
+<li>不允许出现多个同名的强符号</li>
+<li>当出现一个强符号和多个弱符号时，选择强符号</li>
+<li>当出现多个弱符号时，任意选择一个弱符号</li>
+</ol>
+<p>链接过程实际上是实现了符号的解析和重定位过程。</p>
+<div class="highlight"><pre>gcc -o p main.o swap.o
+</pre></div>
+
+
+<h2>变量存储的位置及变量作用域的实现</h2>
+<ul>
+<li>全局变量：存储在bss或data，所有文件都可以访问</li>
+<li>本地静态变量：存储在bss或data，当前文件可访问</li>
+<li>静态分配的局部变量：存储在栈上，只有当前函数可以访问</li>
+<li>动态分配的局部变量：存储在堆上，如果没有被释放，而且保存了变量的地址，所有文件都可以访问</li>
+</ul>
+<h2>静态链接和动态链接</h2>
+<p><strong>为什么需要静态链接库？</strong></p>
+<p>考虑如何为应用程序提供C库的支持：一种是编译器自身能理解所有c库中的符号，执行相应的链接操作；另一种是将所有C库编译成一个relocatable oject file。但这样存在一些明显的缺点，如果要对修改C库的接口，第一种选择就需要改变编译器的实现，第二种选择需要重新编译生成新的relocatable object file。</p>
+<p>人的智慧是无穷的，更好的方法就是将一个个的库函数分别编译成一个个的relocatable object file，然后将它们打包成一个archive，称为静态链接库。这样无论是修改还是更新C库的接口带来的影响都比较小。</p>
+<p>在实际的编译过程中，编译器纪录下当前未被解析的符号定义，然后如果在静态链接库中找到相应的符号，就将相应的relocatable object file包含进来一起链接。</p>
+<p><strong>为什么需要动态链接库？</strong></p>
+<p>考虑一下这个画面，小明一个学期写了100个C程序，每个程序中都使用了printf()函数，如果使用静态链接库，同时执行这100个程序，内存中就会有printf.o（包含printf()的object file）的100个拷贝，对于内存这种能省即省的资源，这绝对是一种浪费！</p>
+<p>天下大势，总有更牛逼的人出现。然后动态链接库就被设计出来了，shared object file在内存中只保留一个副本，链接器在链接时只是拷贝一些符号信息，实际的链接过程推迟到了运行时。</p>
+<h2>参考</h2>
+<p><a href="csapp.cs.cmu.edu/">CSAPP</a></p></div>
+		<div class="disqus">
+			<h2>Comments</h2>
+<div id="disqus_thread"></div>
+<script type="text/javascript">
+	var disqus_identifier = "pages/2015/10/03/linking.html";
+	(function() {
+		var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+		dsq.src = 'https://morne.disqus.com/embed.js';
+		(document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+	})();
+</script>
+		</div>
+	</div>
+				</div>
+			</div>
+
+			<div class="sidebar">
+				<div class="well">
+					<h3>Blogroll</h3>
+					<ul>
+						<li><a href="http://coolshell.cn/" target="_blank">酷壳</a></li>
+						<li><a href="http://macshuo.com/" target="_blank">池建强的随想录</a></li>
+						<li><a href="http://ruanyifeng.com/" target="_blank">阮一峰的网络日志</a></li>
+						<li><a href="http://mindhacks.cn/" target="_blank">Mind Hacks</a></li>
+						<li><a href="http://www.matrix67.com/blog/" target="_blank">Matrix67: The Aha Moments</a></li>
+						<li><a href="http://www.raychase.net/" target="_blank">四火的唠叨</a></li>
+						<li><a href="http://hedengcheng.com/" target="_blank">何登成的技术博客</a></li>
+						<li><a href="http://blog.csdn.net/solstice" target="_blank">陈硕的Blog</a></li>
+					</ul>
+
+					<h3>Social</h3>
+					<ul>
+						<li><a href="https://github.com/liaozhenyi" target="_blank">github</a></li>
+						<li><a href="https://www.quora.com/Zhenyi-Liao" target="_blank">quora</a></li>
+						<li><a href="http://stackoverflow.com/users/4362620/zhenyi-liao" target="_blank">stackoverflow</a></li>
+					</ul>
+
+					<h3> Categories </h3>
+					<ul>
+						<li class="active"><a href="/category/tech.html">tech</a></li>
+					</ul>
+
+					<h3> Tags </h3>
+					<ul>
+						<li class="tag-4"><a href="/tag/webserver">webserver</a></li>
+						<li class="tag-4"><a href="/tag/nginx">nginx</a></li>
+						<li class="tag-2"><a href="/tag/linux">linux</a></li>
+						<li class="tag-4"><a href="/tag/linking">linking</a></li>
+						<li class="tag-4"><a href="/tag/process">process</a></li>
+						<li class="tag-4"><a href="/tag/socket">socket</a></li>
+						<li class="tag-1"><a href="/tag/network_programming">network_programming</a></li>
+						<li class="tag-2"><a href="/tag/source_code">source_code</a></li>
+						<li class="tag-1"><a href="/tag/c">c</a></li>
+					</ul>
+				</div>
+			</div>
+
+		</div>
+
+	</div>
+	
+	<div class="footbar">
+		<div class="container">
+		  <p>Powered by <a href="http://getpelican.com/">Pelican</a>. Booler's Adventure &copy; 不贰 2014-2016</p>
+		</div>
+	</div>
+
+</body>
+</html>
